@@ -1,0 +1,25 @@
+﻿using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using Ros_CSharp; //Contains all core c# scripts
+//using Messages; //contains all ROS messages
+
+public class TutorialPublisher : MonoBehaviour {
+    public ROSCore rosmaster;
+    private NodeHandle nh = null;
+    private Publisher<Messages.std_msgs.String> pub;
+
+    // Use this for initialization
+    void Start () {
+        nh = rosmaster.getNodeHandle();
+        pub = nh.advertise<Messages.std_msgs.String>("/my_topic", 10);
+
+    }
+	
+	// Update is called once per frame
+	void Update () {
+        Messages.std_msgs.String msg = new Messages.std_msgs.String();
+        msg.data = "HELLO!";
+        pub.publish(msg);
+    }
+}
