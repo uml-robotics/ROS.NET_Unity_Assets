@@ -44,5 +44,5 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   autostart: 1
-  Master_URI: http://10.0.7.179:11311
-  HOSTNAME: 10.0.7.149
+  Master_URI: http://$MY_MASTER_URI$:11311
+  HOSTNAME: $MY_IP$

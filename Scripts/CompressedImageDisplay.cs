@@ -11,8 +11,9 @@ using UnityEditor;
 #endif
 using System.Collections;
 
-public class CompressedImageDisplay : ROSMonoBehavior
+public class CompressedImageDisplay : MonoBehaviour
 {
+    public ROSCore rosmaster;
     private string _topic;
     public string topic { get { return _topic; }
         set { if (value == null || value.Length == 0) return;
@@ -26,6 +27,7 @@ public class CompressedImageDisplay : ROSMonoBehavior
                 mapsub = nh.subscribe<CompressedImage>(topic, 1, mapcb);
             } } }
     public string image_topic;
+    public bool backside;
 
     private NodeHandle nh = null;
     private Subscriber<CompressedImage> mapsub;
@@ -33,6 +35,8 @@ public class CompressedImageDisplay : ROSMonoBehavior
     private uint pwidth=2, pheight=2;
 
     private MeshRenderer rend = null;
+
+    private MeshRenderer backrend;
     private Texture2D mapTexture = null;
 
     private CompressedImage lastimage = null;
@@ -49,6 +53,14 @@ public class CompressedImageDisplay : ROSMonoBehavior
     private void Start()
     {
         rend = GetComponent<MeshRenderer>();
+        MeshRenderer[] meshrenderer= GetComponentsInChildren<MeshRenderer>();
+        backrend = meshrenderer[1];
+        nh = rosmaster.getNodeHandle();
+        if (image_topic != null && image_topic.Length > 0)
+            topic = image_topic;
+        else
+            topic = topic;
+        /*
         rosmanager.StartROS(this, () =>
                                                            {
                                                                nh = new NodeHandle();
@@ -56,7 +68,7 @@ public class CompressedImageDisplay : ROSMonoBehavior
                                                                    topic = image_topic;
                                                                else
                                                                    topic = topic;
-                                                           });
+                                                           }); */
     }
 
     private void mapcb(CompressedImage msg)
@@ -77,6 +89,8 @@ public class CompressedImageDisplay : ROSMonoBehavior
 	        mapTexture.LoadImage(lastimage.data);
 	        aspectRatio = 1.0f*mapTexture.width/mapTexture.height;
             rend.material.mainTexture = mapTexture;
+            if(backside)
+                backrend.material.mainTexture = mapTexture;
 	    }
 	}
 }
