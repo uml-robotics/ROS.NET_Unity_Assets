@@ -7,8 +7,13 @@ using System;
 using System.IO;
 using Collada141;
 
-public class LoadMesh : ROSMonoBehavior {
+/* To use this class you must have it be a child of the TFTree prefab, and you must create a Assets/Resources folder and place your robot_description package inside.
+ * This is whatever ros package the robot description is being created from. There should be a valid /robot_description ros parameter being set. With that setup, you should then
+ * see the robot model show up and it should update based on the published tf data
+ */
+public class LoadMesh : MonoBehaviour {
 
+    public ROSCore rosmaster;
     public string RobotDescriptionParam = "";
     private string robotdescription;
     private Dictionary<string, Color?> materials = new Dictionary<string, Color?>();
@@ -25,10 +30,8 @@ public class LoadMesh : ROSMonoBehavior {
 
     internal NodeHandle nh;
     void Start () {
-        rosmanager.StartROS(this, () => {
-            nh = new NodeHandle();
-            Load();
-        });
+        nh = rosmaster.getNodeHandle();
+        Load();
     }
 	
     //Written by Eric M.
