@@ -37,6 +37,9 @@ public class TheoraSubscriber : MonoBehaviour
     [Tooltip("The object to add a texture to")]
     public GameObject Obj;
 
+    /*
+     * Taken from libogg.h
+     */
     /// <summary>
     /// Encapsulates the data and metadata belonging to a single raw Ogg/Vorbis packet
     /// </summary>
@@ -53,6 +56,9 @@ public class TheoraSubscriber : MonoBehaviour
         public long packetno;
     };
 
+    /*
+     * Taken from libtheora's codec.h
+     */
     /// <summary>
     /// Contains Theora bitstream information
     /// </summary>
@@ -161,6 +167,9 @@ public class TheoraSubscriber : MonoBehaviour
         int keyframe_granule_shift;
     };
 
+    /*
+     * Taken from libtheora's codec.h
+     */
     /// <summary>
     /// Contains Theora comment information
     /// </summary>
@@ -185,6 +194,9 @@ public class TheoraSubscriber : MonoBehaviour
         IntPtr vendor;
     };
 
+    /*
+     * Taken from libtheora's codec.h
+     */
     /// <summary>
     /// A buffer for a single color plane in an uncompressed image
     /// </summary>
@@ -209,6 +221,9 @@ public class TheoraSubscriber : MonoBehaviour
         public IntPtr data;
     };
 
+    /*
+     * Taken from libtheora's codec.h
+     */
     /// <summary>
     /// The currently defined color space tags
     /// </summary>
@@ -232,6 +247,9 @@ public class TheoraSubscriber : MonoBehaviour
         TH_CS_NSPACES
     };
 
+    /*
+     * Taken from libtheora's codec.h
+     */
     /// <summary>
     /// The currently defined pixel format tags
     /// </summary>
@@ -261,6 +279,9 @@ public class TheoraSubscriber : MonoBehaviour
         TH_PF_NFORMATS
     };
 
+    /*
+     * Taken from libtheora's codec.h
+     */
     /// <summary>
     /// Return codes for Theora decode
     /// </summary>
@@ -302,6 +323,9 @@ public class TheoraSubscriber : MonoBehaviour
         TH_DUPFRAME = 1,
     };
 
+    /*
+     * Function definition taken from libtheora's codec.h. Calls libtheora's source.
+     */
     /// <summary>
     /// Initializes a Th_Info structure. This should be called on a freshly allocated Th_Info structure before attempting to use it.
     /// </summary>
@@ -309,6 +333,9 @@ public class TheoraSubscriber : MonoBehaviour
     [DllImport("libtheora", CallingConvention = CallingConvention.Cdecl, EntryPoint = "th_info_init")]
     private static extern void th_info_init(ref Th_Info c);
 
+    /*
+     * Function definition taken from libtheora's codec.h. Calls libtheora's source.
+     */
     /// <summary>
     /// Clears a Th_Info structure. This should be called on a Th_Info structure after it is no longer needed.
     /// </summary>
@@ -316,6 +343,9 @@ public class TheoraSubscriber : MonoBehaviour
     [DllImport("libtheora", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl, EntryPoint = "th_info_clear")]
     private static extern void th_info_clear(ref Th_Info _info);
 
+    /*
+     * Function definition taken from libtheora's codec.h. Calls libtheora's source.
+     */
     /// <summary>
     /// Initialize a Th_Comment structure. This should be called on a freshly allocated Th_Comment structure before attempting to use it.
     /// </summary>
@@ -323,6 +353,9 @@ public class TheoraSubscriber : MonoBehaviour
     [DllImport("libtheora", CallingConvention = CallingConvention.Cdecl, EntryPoint = "th_comment_init")]
     private static extern void th_comment_init(ref Th_Comment tc);
 
+    /*
+     * Function definition taken from libtheora's codec.h. Calls libtheora's source.
+     */
     /// <summary>
     /// Clears a Th_Comment structure. This should be called on a Th_Comment structure after it is no longer needed. It will free all memory used by the structure members.
     /// </summary>
@@ -330,6 +363,9 @@ public class TheoraSubscriber : MonoBehaviour
     [DllImport("libtheora", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl, EntryPoint = "th_comment_clear")]
     private static extern void th_comment_clear(ref Th_Comment _tc);
 
+    /*
+     * Function definition taken from libtheora's theoradec.h. Calls libtheora's source.
+     */
     /// <summary>
     /// Decodes the header packets of a Theora stream. 
     /// This should be called on the initial packets of the stream, in succession, until it returns 0, 
@@ -358,6 +394,9 @@ public class TheoraSubscriber : MonoBehaviour
     [DllImport("libtheora", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl, EntryPoint = "th_decode_headerin")]
     private static extern int th_decode_headerin(ref Th_Info _info, ref Th_Comment _tc, ref th_setup_info_ptr _setup, ogg_packet_ptr _op);
 
+    /*
+     * Function definition taken from libtheora's theoradec.h. Calls libtheora's source.
+     */
     /// <summary>
     /// Allocates a decoder instance.
     /// Security Warning: The Theora format supports very large frame sizes, potentially even larger than the address space of a 32-bit machine,
@@ -374,6 +413,9 @@ public class TheoraSubscriber : MonoBehaviour
     [DllImport("libtheora", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl, EntryPoint = "th_decode_alloc")]
     private static extern th_dec_ctx_ptr th_decode_alloc(ref Th_Info _info, th_setup_info_ptr _setup);
 
+    /*
+     * Function definition taken from libtheora's theoradec.h. Calls libtheora's source.
+     */
     /// <summary>
     /// Releases all storage used for the decoder setup information. This should be called after you no longer want to create any decoders 
     /// for a stream whose headers you have parsed with th_decode_headerin().
@@ -382,6 +424,9 @@ public class TheoraSubscriber : MonoBehaviour
     [DllImport("libtheora", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl, EntryPoint = "th_setup_free")]
     private static extern void th_setup_free(th_setup_info_ptr _setup);
 
+    /*
+     * Function definition taken from libtheora's theoradec.h. Calls libtheora's source.
+     */
     /// <summary>
     /// Submits a packet containing encoded video data to the decoder.
     /// </summary>
@@ -400,6 +445,9 @@ public class TheoraSubscriber : MonoBehaviour
     [DllImport("libtheora", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl, EntryPoint = "th_decode_packetin")]
     private static extern int th_decode_packetin(th_dec_ctx_ptr _dec, ogg_packet_ptr _op, ref Int64 _granpos);
 
+    /*
+     * Function definition taken from libtheora's theoradec.h. Calls libtheora's source.
+     */
     /// <summary>
     /// Outputs the next available frame of decoded Y'CbCr data. If a striped decode callback has been set with TH_DECCTL_SET_STRIPE_CB,
     /// then the application does not need to call this function.
@@ -415,6 +463,9 @@ public class TheoraSubscriber : MonoBehaviour
     [DllImport("libtheora", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl, EntryPoint = "th_decode_ycbcr_out")]
     private static extern int th_decode_ycbcr_out(th_dec_ctx_ptr _dec, Th_Img_Plane[] _ycbcr);
 
+    /*
+     * Function definition taken from libtheora's theoradec.h. Calls libtheora's source.
+     */
     /// <summary>
     /// Frees an allocated decoder instance.
     /// </summary>
@@ -777,7 +828,9 @@ public class TheoraSubscriber : MonoBehaviour
         }
     }
 
+    //TODO: Only convert the new pixels to save on cpu usage
     //TODO: Make this one function
+    //Taken from stackoverflow: https://stackoverflow.com/questions/12469730/confusion-on-yuv-nv21-conversion-to-rgb
     /// <summary>
     /// Convert a YUV420 byte[] to bgr byte[]
     /// </summary>
@@ -814,6 +867,7 @@ public class TheoraSubscriber : MonoBehaviour
             }
     }
 
+    //Taken from stackoverflow: https://stackoverflow.com/questions/12469730/confusion-on-yuv-nv21-conversion-to-rgb
     /// <summary>
     /// Convert a YUV422 byte[] to bgr byte[]
     /// </summary>
@@ -851,6 +905,7 @@ public class TheoraSubscriber : MonoBehaviour
             }
     }
 
+    //Taken from stackoverflow: https://stackoverflow.com/questions/12469730/confusion-on-yuv-nv21-conversion-to-rgb
     /// <summary>
     /// Convert a YUV444 byte[] to bgr byte[]
     /// </summary>
