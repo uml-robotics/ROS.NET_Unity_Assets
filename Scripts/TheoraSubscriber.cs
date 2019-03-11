@@ -1,4 +1,4 @@
-﻿//Gregory Lemasurier
+﻿//Gregory LeMasurier
 //University of Massachusuettes Lowell
 using Ros_CSharp;
 using System;
@@ -324,7 +324,7 @@ public class TheoraSubscriber : MonoBehaviour
     };
 
     /*
-     * Function definition taken from libtheora's codec.h. Calls libtheora's source.
+     * Function declaration taken from libtheora's codec.h. Calls libtheora's source.
      */
     /// <summary>
     /// Initializes a Th_Info structure. This should be called on a freshly allocated Th_Info structure before attempting to use it.
@@ -334,7 +334,7 @@ public class TheoraSubscriber : MonoBehaviour
     private static extern void th_info_init(ref Th_Info c);
 
     /*
-     * Function definition taken from libtheora's codec.h. Calls libtheora's source.
+     * Function declaration taken from libtheora's codec.h. Calls libtheora's source.
      */
     /// <summary>
     /// Clears a Th_Info structure. This should be called on a Th_Info structure after it is no longer needed.
@@ -344,7 +344,7 @@ public class TheoraSubscriber : MonoBehaviour
     private static extern void th_info_clear(ref Th_Info _info);
 
     /*
-     * Function definition taken from libtheora's codec.h. Calls libtheora's source.
+     * Function declaration taken from libtheora's codec.h. Calls libtheora's source.
      */
     /// <summary>
     /// Initialize a Th_Comment structure. This should be called on a freshly allocated Th_Comment structure before attempting to use it.
@@ -354,7 +354,7 @@ public class TheoraSubscriber : MonoBehaviour
     private static extern void th_comment_init(ref Th_Comment tc);
 
     /*
-     * Function definition taken from libtheora's codec.h. Calls libtheora's source.
+     * Function declaration taken from libtheora's codec.h. Calls libtheora's source.
      */
     /// <summary>
     /// Clears a Th_Comment structure. This should be called on a Th_Comment structure after it is no longer needed. It will free all memory used by the structure members.
@@ -364,7 +364,7 @@ public class TheoraSubscriber : MonoBehaviour
     private static extern void th_comment_clear(ref Th_Comment _tc);
 
     /*
-     * Function definition taken from libtheora's theoradec.h. Calls libtheora's source.
+     * Function declaration taken from libtheora's theoradec.h. Calls libtheora's source.
      */
     /// <summary>
     /// Decodes the header packets of a Theora stream. 
@@ -395,7 +395,7 @@ public class TheoraSubscriber : MonoBehaviour
     private static extern int th_decode_headerin(ref Th_Info _info, ref Th_Comment _tc, ref th_setup_info_ptr _setup, ogg_packet_ptr _op);
 
     /*
-     * Function definition taken from libtheora's theoradec.h. Calls libtheora's source.
+     * Function declaration taken from libtheora's theoradec.h. Calls libtheora's source.
      */
     /// <summary>
     /// Allocates a decoder instance.
@@ -414,7 +414,7 @@ public class TheoraSubscriber : MonoBehaviour
     private static extern th_dec_ctx_ptr th_decode_alloc(ref Th_Info _info, th_setup_info_ptr _setup);
 
     /*
-     * Function definition taken from libtheora's theoradec.h. Calls libtheora's source.
+     * Function declaration taken from libtheora's theoradec.h. Calls libtheora's source.
      */
     /// <summary>
     /// Releases all storage used for the decoder setup information. This should be called after you no longer want to create any decoders 
@@ -425,7 +425,7 @@ public class TheoraSubscriber : MonoBehaviour
     private static extern void th_setup_free(th_setup_info_ptr _setup);
 
     /*
-     * Function definition taken from libtheora's theoradec.h. Calls libtheora's source.
+     * Function declaration taken from libtheora's theoradec.h. Calls libtheora's source.
      */
     /// <summary>
     /// Submits a packet containing encoded video data to the decoder.
@@ -446,7 +446,7 @@ public class TheoraSubscriber : MonoBehaviour
     private static extern int th_decode_packetin(th_dec_ctx_ptr _dec, ogg_packet_ptr _op, ref Int64 _granpos);
 
     /*
-     * Function definition taken from libtheora's theoradec.h. Calls libtheora's source.
+     * Function declaration taken from libtheora's theoradec.h. Calls libtheora's source.
      */
     /// <summary>
     /// Outputs the next available frame of decoded Y'CbCr data. If a striped decode callback has been set with TH_DECCTL_SET_STRIPE_CB,
@@ -464,7 +464,7 @@ public class TheoraSubscriber : MonoBehaviour
     private static extern int th_decode_ycbcr_out(th_dec_ctx_ptr _dec, Th_Img_Plane[] _ycbcr);
 
     /*
-     * Function definition taken from libtheora's theoradec.h. Calls libtheora's source.
+     * Function declaration taken from libtheora's theoradec.h. Calls libtheora's source.
      */
     /// <summary>
     /// Frees an allocated decoder instance.
@@ -563,6 +563,11 @@ public class TheoraSubscriber : MonoBehaviour
     /// </summary>
     private AutoResetEvent dataMutex = new AutoResetEvent(false);
 
+    /// <summary>
+    /// The previous topic. Used to see if topic was changed.
+    /// </summary>
+    private string prev_topic;
+
 
     /// <summary>
     /// The Callback for the theora image transpot subscriber
@@ -582,7 +587,7 @@ public class TheoraSubscriber : MonoBehaviour
         //Create Ptr to ogg packet
         op_ptr = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(Ogg_Packet)));
         Marshal.StructureToPtr(op, op_ptr, false);
-        
+
         //If BOS reset
         if (packet.b_o_s == 1)
         {
@@ -603,7 +608,7 @@ public class TheoraSubscriber : MonoBehaviour
 
             state = State.DECODE_HEADER;
         }
-        
+
         //State of Theora Decode
         switch (state)
         {
@@ -705,7 +710,7 @@ public class TheoraSubscriber : MonoBehaviour
                 Debug.LogError("[TheoraSubscriber] th_decode_packetin: Did not return an acceptable value");
                 break;
         }
-      
+
         int frame_size = ycbcr_buf[0].stride * ycbcr_buf[0].height;
         int u_size = ycbcr_buf[1].stride * ycbcr_buf[1].height;
         int v_size = ycbcr_buf[2].stride * ycbcr_buf[2].height;
@@ -713,7 +718,7 @@ public class TheoraSubscriber : MonoBehaviour
         height = ycbcr_buf[0].height;
 
         byte[] ycbcr = new byte[frame_size + u_size + v_size];
-        
+
         Marshal.Copy(ycbcr_buf[0].data, ycbcr, 0, frame_size);
         Marshal.Copy(ycbcr_buf[1].data, ycbcr, frame_size, u_size);
         Marshal.Copy(ycbcr_buf[2].data, ycbcr, frame_size + u_size, v_size);
@@ -752,6 +757,22 @@ public class TheoraSubscriber : MonoBehaviour
     /// </summary>
     private void Update()
     {
+        //If topic has changed and is not empty change subscriber's topic
+        if (Topic != prev_topic && Topic != null && Topic.Length != 0)
+        {
+            prev_topic = Topic;
+            if (nh != null)
+            {
+                if (imageSub != null)
+                {
+                    imageSub.unsubscribe();
+                    imageSub.shutdown();
+                }
+                imageSub = nh.subscribe<ti.Packet>(Topic, 0, ImageCb);
+            }
+        }
+
+        //Apply texture
         if (dataMutex.WaitOne(0))
         {
             texture.Resize(width, height);
@@ -805,7 +826,10 @@ public class TheoraSubscriber : MonoBehaviour
         state = State.END_OF_STREAM;
 
         if (imageSub != null)
+        {
             imageSub.unsubscribe();
+            imageSub.shutdown();
+        }
 
         th_info_clear(ref ti);
         th_comment_clear(ref tc);
