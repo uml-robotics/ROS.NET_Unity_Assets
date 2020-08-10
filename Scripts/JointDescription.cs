@@ -25,10 +25,5 @@ public class JointDescription : MonoBehaviour {
     public string child_link;
     public Vector3 axis;
 
-    public void Start()
-    {
-        //So i can turn off in editor
-    }
     //TODO: Add other fields
-
 }

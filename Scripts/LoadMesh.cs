@@ -44,7 +44,6 @@ public class LoadMesh : MonoBehaviour {
     //Modified by Dalton C.
     public bool Load()
     {
-        //Set RobotDescriptionParam to use appropriate namespace
         if (!NameSpace.Equals(string.Empty))
         {
             if (!RobotDescriptionParam.StartsWith("/"))
@@ -397,7 +396,6 @@ public class LoadMesh : MonoBehaviour {
                                     goParent.transform.parent = transform;
                                     goParent.name = link.Attribute("name").Value;
                                     links.Add(goParent);
-                                    //Debug.Log("[LoadMesh][handleLinks]: Added: " + link.Attribute("name").Value);
                                     go.transform.parent = goParent.transform;
 
                                     //this sucks, 
@@ -451,7 +449,7 @@ public class LoadMesh : MonoBehaviour {
 
                         parent.name = link.Attribute("name").Value;
                         parent.transform.parent = transform;
-                        go.transform.parent = parent.transform; 
+                        go.transform.parent = parent.transform;
                         go.transform.localScale = new Vector3(y, z, x);
 
                         if (xyz_pos != null)
@@ -491,7 +489,6 @@ public class LoadMesh : MonoBehaviour {
 
                         if (go.GetComponent<MeshRenderer>() != null && color != null)
                             go.GetComponent<MeshRenderer>().material.color = color.Value;
-                        //links.Add(go.name, new link(go, xyz));
                     }
 
                 }
