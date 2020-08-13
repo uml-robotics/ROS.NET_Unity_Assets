@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using XmlRpc_Wrapper;
 using gm = Messages.geometry_msgs;
@@ -14,11 +14,13 @@ using System.Linq;
 using UnityEditor;
 [InitializeOnLoad]
 #endif
-public class TfVisualizer : ROSMonoBehavior
+public class TfVisualizer : MonoBehaviour
 {
     public TfVisualizer()
     {
     }
+
+    public ROSCore rosmaster;
     private NodeHandle nh = null;
     private Subscriber<Messages.tf.tfMessage> tfsub, tfstaticsub;
     private Text textmaybe;
@@ -26,7 +28,7 @@ public class TfVisualizer : ROSMonoBehavior
 
     private volatile int lasthz = 0;
     private volatile int count = 0;
-    private DateTime last = DateTime.Now;
+    //private DateTime last = DateTime.Now;
 
     private Transform Template;
     private Transform Root;
@@ -64,12 +66,11 @@ public class TfVisualizer : ROSMonoBehavior
 	    Root.GetComponentInChildren<TextMesh>(true).text = FixedFrame;
         tree[FixedFrame] = Root;
         hideChildrenInHierarchy(Root);
-	    rosmanager.StartROS(this, () =>
-	                                                       {
-	                                                           nh = new NodeHandle();
-	                                                           tfstaticsub = nh.subscribe<Messages.tf.tfMessage>("/tf_static", 0, tf_callback);
-	                                                           tfsub = nh.subscribe<Messages.tf.tfMessage>("/tf", 0, tf_callback);
-	                                                       });
+
+        nh = rosmaster.getNodeHandle();
+
+        tfstaticsub = nh.subscribe<Messages.tf.tfMessage>("/tf_static", 0, tf_callback);
+        tfsub = nh.subscribe<Messages.tf.tfMessage>("/tf", 0, tf_callback);
     }
 
     private void tf_callback(tfMessage msg)
@@ -77,7 +78,7 @@ public class TfVisualizer : ROSMonoBehavior
         lock (transforms)
         {
             transforms.Enqueue(msg);
-            DateTime now = DateTime.Now;
+            //DateTime now = DateTime.Now;
         }
     }
 
