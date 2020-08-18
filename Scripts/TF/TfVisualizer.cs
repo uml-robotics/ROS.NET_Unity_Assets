@@ -168,7 +168,6 @@ public class TfVisualizer : MonoBehaviour
                     }
 
                     Transform value;
-
                     if (tree.TryGetValue(tf.frame_id, out value))
                     {
                         value.gameObject.SetActive(true);
