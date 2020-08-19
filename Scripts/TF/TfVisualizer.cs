@@ -41,6 +41,7 @@ public class TfVisualizer : MonoBehaviour
     private float _axis_scale = 1.0f;
 
     private Dictionary<string, Transform> tree = new Dictionary<string, Transform>();
+    private Dictionary<string, List<Transform>> framesMissingParent = new Dictionary<string, List<Transform>>();//string parent Transform child
 
     public static void hideChildrenInHierarchy(Transform trans)
     {
@@ -49,7 +50,7 @@ public class TfVisualizer : MonoBehaviour
     }
 
     // Use this for initialization
-    void Start ()
+    void Start()
     {
         if (transform.childCount == 0)
             throw new Exception("Unable to locate the template TFFrame for the TFTree");
@@ -63,7 +64,7 @@ public class TfVisualizer : MonoBehaviour
 #if UNITY_EDITOR
         ObjectNames.SetNameSmart(Root, FixedFrame);
 #endif
-	    Root.GetComponentInChildren<TextMesh>(true).text = FixedFrame;
+        Root.GetComponentInChildren<TextMesh>(true).text = FixedFrame;
         tree[FixedFrame] = Root;
         hideChildrenInHierarchy(Root);
 
@@ -89,13 +90,13 @@ public class TfVisualizer : MonoBehaviour
     }
 
     // Update is called once per frame
-	void Update ()
-	{
+    void Update()
+    {
         //only handle one message per frame per update
-	    Dictionary<string, gm.TransformStamped> tfs = new Dictionary<string, gm.TransformStamped>();
-	    lock (transforms)
-	    {
-            while(transforms.Count > 0)
+        Dictionary<string, gm.TransformStamped> tfs = new Dictionary<string, gm.TransformStamped>();
+        lock (transforms)
+        {
+            while (transforms.Count > 0)
             {
                 Messages.tf.tfMessage tm = transforms.Dequeue();
                 foreach (gm.TransformStamped t in tm.transforms)
@@ -103,8 +104,8 @@ public class TfVisualizer : MonoBehaviour
                     tfs[t.child_frame_id] = t;
                 }
             }
-	    }
-        
+        }
+
         emTransform[] tfz = Array.ConvertAll<gm.TransformStamped, emTransform>(tfs.Values.ToArray(), (a) => new emTransform(a));
         foreach (emTransform tf in tfz)
         {
@@ -112,19 +113,21 @@ public class TfVisualizer : MonoBehaviour
                 tf.frame_id = "/" + tf.frame_id;
             if (!tf.child_frame_id.StartsWith("/"))
                 tf.child_frame_id = "/" + tf.child_frame_id;
+
             if (IsVisible(tf.child_frame_id))
             {
                 Vector3 pos = tf.UnityPosition.Value;
                 Quaternion rot = tf.UnityRotation.Value;
-                lock(tree)
+                lock (tree)
                 {
                     if (!tree.ContainsKey(tf.child_frame_id))
                     {
                         Transform value1;
-                        if (tree.TryGetValue(tf.frame_id, out value1))
+                        bool hasparentFrame = tree.TryGetValue(tf.frame_id, out value1);
+                        if (hasparentFrame)
+                        {
                             Template.SetParent(value1);
-                        else
-                            Debug.LogWarning(string.Format("The parent ({0}) of {1} is not in the tree yet!", tf.frame_id, tf.child_frame_id));
+                        }
 
                         Transform newframe = (Transform)Instantiate(Template, Template.localPosition, Template.localRotation);
                         hideChildrenInHierarchy(newframe);
@@ -133,6 +136,35 @@ public class TfVisualizer : MonoBehaviour
 #endif
                         tree[tf.child_frame_id] = newframe;
                         tree[tf.child_frame_id].gameObject.GetComponentInChildren<TextMesh>(true).text = tf.child_frame_id;
+
+                        if (framesMissingParent.ContainsKey(tf.child_frame_id))
+                        {
+                            List<Transform> frames;
+                            if (framesMissingParent.TryGetValue(tf.child_frame_id, out frames))
+                            {
+                                foreach (Transform frame in frames)
+                                {
+                                    frame.SetParent(tree[tf.child_frame_id], false);
+                                }
+                                framesMissingParent.Remove(tf.child_frame_id);
+                            }
+                        }
+
+                        if (!hasparentFrame)
+                        {
+                            Debug.LogWarning(string.Format("[TFVisualizer][Update]: The parent ({0}) of {1} is not in the tree yet!", tf.frame_id, tf.child_frame_id));
+
+                            List<Transform> frames;
+                            if (framesMissingParent.TryGetValue(tf.frame_id, out frames))
+                            {
+                                frames.Add(tree[tf.child_frame_id]);
+                            }
+                            else {
+                                frames = new List<Transform>();
+                                frames.Add(tree[tf.child_frame_id]);
+                                framesMissingParent.Add(tf.frame_id, frames);
+                            }
+                        }
                     }
 
                     Transform value;
@@ -158,7 +190,7 @@ public class TfVisualizer : MonoBehaviour
     }
     public bool queryTransforms(string tfName, out Transform val)
     {
-        lock(tree)
+        lock (tree)
             return tree.TryGetValue(tfName, out val);
     }
 }
