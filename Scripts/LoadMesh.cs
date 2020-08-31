@@ -21,6 +21,10 @@ public class LoadMesh : MonoBehaviour {
     
     private TfVisualizer tfviz;
 
+    public bool isLoaded { get; private set; }
+
+    private List<GameObject> links;
+
     //ros stuff
     public string NameSpace = "";
     public void setNamespace(string _NameSpace)
@@ -30,7 +34,9 @@ public class LoadMesh : MonoBehaviour {
 
     internal NodeHandle nh;
     void Start () {
+        isLoaded = false;
         nh = rosmaster.getNodeHandle();
+        links = new List<GameObject>();
         Invoke("Load",5);
     }
 	
@@ -56,8 +62,10 @@ public class LoadMesh : MonoBehaviour {
                 tfviz = vis;
                 Parse();
             });
+            isLoaded = true;
             return true;
         }
+        isLoaded = false;
         return false;
     }
 
@@ -85,6 +93,9 @@ public class LoadMesh : MonoBehaviour {
 
             if (element.Name == "link")
                 handleLink(element);
+
+            if (element.Name == "joint")
+                handleJoint(element);
 
             if (element.Name == "gazebo")
             {
@@ -138,13 +149,127 @@ public class LoadMesh : MonoBehaviour {
         return colorOut;
     }
     
-    //curently not using joints
     bool handleJoint(XElement joint)
     {
-        XElement origin = joint.Element("origin");
+        XAttribute name = joint.Attribute("name");
+
         XElement parent = joint.Element("parent");
+
         XElement child = joint.Element("child");
-        string strOrigin = origin == null ? null : origin.Attribute("xyz") == null ? null : origin.Attribute("xyz").Value;
+
+
+        GameObject child_link = null;
+        GameObject parent_link = null;
+        foreach (GameObject go in links) {
+            if (child.Attribute("link") != null && go.name == child.Attribute("link").Value)
+            {
+                child_link = go;
+                JointDescription joint_description = go.AddComponent<JointDescription>();
+
+                joint_description.joint_name = name.Value;
+
+                if (parent.Attribute("link") != null)
+                    joint_description.parent_link = parent.Attribute("link").Value;
+                else
+                    joint_description.parent_link = "";
+
+                joint_description.child_link = child.Attribute("link").Value;
+
+                XAttribute type = joint.Attribute("type");
+                if (type != null)
+                {
+                    if (type.Value == "revolute")
+                        joint_description.type = JointDescription.JointType.revolute;
+                    else if (type.Value == "continuous")
+                        joint_description.type = JointDescription.JointType.continuous;
+                    else if (type.Value == "prismatic")
+                        joint_description.type = JointDescription.JointType.prismatic;
+                    else if (type.Value == "fixed")
+                        joint_description.type = JointDescription.JointType.fixed_joint;
+                    else if (type.Value == "floating")
+                        joint_description.type = JointDescription.JointType.floating;
+                    else if (type.Value == "planar")
+                        joint_description.type = JointDescription.JointType.planar;
+                    else
+                    {
+                        Debug.LogError("[LoadMesh][handleJoint]: Joint Type Not Supported: " + type.Value);
+                        joint_description.type = JointDescription.JointType.fixed_joint;
+                    }
+
+                }
+
+                XElement origin = joint.Element("origin");
+
+                float[] rpy_rot = null;
+                string localRot = origin == null ? null : origin.Attribute("rpy") == null ? null : origin.Attribute("rpy").Value;
+                if (localRot != null)
+                {
+                    string[] poses = localRot.Split(new char[0], StringSplitOptions.RemoveEmptyEntries);
+                    rpy_rot = new float[poses.Length];
+                    for (int index = 0; index < poses.Length; ++index)
+                    {
+                        if (!float.TryParse(poses[index], out rpy_rot[index]))
+                        {
+                            rpy_rot[index] = 0;
+                        }
+                    }
+                }
+                Vector3 rpy_v = rpy_rot == null ? Vector3.zero : new Vector3(rpy_rot[0] * 57.3f, rpy_rot[1] * 57.3f, rpy_rot[2] * 57.3f);
+                joint_description.origin.rpy = rpy_v;
+
+                float[] xyz_pos = null;
+                string localPos = origin == null ? null : origin.Attribute("xyz") == null ? null : origin.Attribute("xyz").Value;
+                if (localPos != null)
+                {
+                    string[] poses = localPos.Split(new char[0], StringSplitOptions.RemoveEmptyEntries);
+                    xyz_pos = new float[poses.Length];
+                    for (int index = 0; index < poses.Length; ++index)
+                    {
+                        if (!float.TryParse(poses[index], out xyz_pos[index]))
+                        {
+                            xyz_pos[index] = 0;
+                        }
+                    }
+                }
+                Vector3 xyz_v = xyz_pos == null ? Vector3.zero : new Vector3(xyz_pos[0], xyz_pos[1], xyz_pos[2]);
+                joint_description.origin.xyz = xyz_v;
+
+                XElement axis = joint.Element("axis");
+
+                float[] axis_v = null;
+                string axis_str = axis == null ? null : axis.Attribute("xyz") == null ? null : axis.Attribute("xyz").Value;
+                if (axis_str != null)
+                {
+                    string[] poses = axis_str.Split(new char[0], StringSplitOptions.RemoveEmptyEntries);
+                    axis_v = new float[poses.Length];
+                    for (int index = 0; index < poses.Length; ++index)
+                    {
+                        if (!float.TryParse(poses[index], out axis_v[index]))
+                        {
+                            axis_v[index] = 0;
+                        }
+                    }
+                }
+                joint_description.axis = axis_v == null ? Vector3.zero : new Vector3(axis_v[0], axis_v[1], axis_v[2]);
+
+                XElement limits = joint.Element("limit");
+                string lower = limits == null ? null : limits.Attribute("lower") == null ? null : limits.Attribute("lower").Value;
+                float.TryParse(lower, out joint_description.limits.lower);
+                string upper = limits == null ? null : limits.Attribute("upper") == null ? null : limits.Attribute("upper").Value;
+                float.TryParse(upper, out joint_description.limits.upper);
+                string effort = limits == null ? null : limits.Attribute("effort") == null ? null : limits.Attribute("effort").Value;
+                float.TryParse(effort, out joint_description.limits.effort);
+                string velocity = limits == null ? null : limits.Attribute("velocity") == null ? null : limits.Attribute("velocity").Value;
+                float.TryParse(velocity, out joint_description.limits.velocity);
+            }
+            else if (parent.Attribute("link") != null && go.name == parent.Attribute("link").Value) {
+                parent_link = go;
+            }
+        }
+        if (child_link != null && parent_link != null) {
+            child_link.transform.parent = parent_link.transform;
+        }
+
         return true;
     }
 
@@ -235,6 +360,21 @@ public class LoadMesh : MonoBehaviour {
                             path = path.Substring(0, path.LastIndexOf("."));
                         }
 
+                        //We currently can't load stl so check if we added a dae model
+                        if (path.EndsWith(".stl") || path.EndsWith(".STL"))
+                        {
+                            string stl2Dae = System.IO.Path.ChangeExtension(path, ".dae");
+                            Debug.Log("[LoadMesh][handleLink] We don't support STL so trying DAE: " + stl2Dae);
+                            if (File.Exists(dataPath + "/Resources/" + stl2Dae))
+                            {
+                                Debug.Log("[LoadMesh][handleLink] Found a DAE model: " + stl2Dae);
+
+                                path = stl2Dae;
+                                foundDae = COLLADA.Load(dataPath + "/Resources/" + path);
+                                path = path.Substring(0, path.LastIndexOf("."));
+                            }
+                        }
+
                         try {
                             UnityEngine.Object foundMesh = Resources.Load(path) as GameObject;
 
@@ -280,6 +420,7 @@ public class LoadMesh : MonoBehaviour {
                                     GameObject goParent = new GameObject();
                                     goParent.transform.parent = transform;
                                     goParent.name = link.Attribute("name").Value;
+                                    links.Add(goParent);
                                     go.transform.parent = goParent.transform;
 
                                     //this sucks, 
@@ -373,7 +514,6 @@ public class LoadMesh : MonoBehaviour {
 
                         if (go.GetComponent<MeshRenderer>() != null && color != null)
                             go.GetComponent<MeshRenderer>().material.color = color.Value;
-                        //links.Add(go.name, new link(go, xyz));
                     }
 
                 }
@@ -395,14 +535,14 @@ public class LoadMesh : MonoBehaviour {
     void Update()
     {
 
-        foreach (Transform tf in transform)
+        foreach (GameObject link in links)
         {
             Transform tff;
 
-            if (tfviz != null && tfviz.queryTransforms(NameSpace + "/" + tf.name, out tff))
+            if (tfviz != null && tfviz.queryTransforms(NameSpace + "/" + link.name, out tff))
             {
-                tf.transform.position = tff.position;
-                tf.transform.rotation = tff.rotation;
+                link.transform.position = tff.position;
+                link.transform.rotation = tff.rotation;
 
             }
 
