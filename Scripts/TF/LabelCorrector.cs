@@ -34,7 +34,10 @@ public class LabelCorrector : MonoBehaviour
     void Update ()
     {
         gameObject.GetComponentInChildren<MeshRenderer>(true).enabled = visstate;
-        transform.LookAt(Camera.main.transform, Camera.main.transform.up);
-	    transform.Rotate(new Vector3(0f, 1f, 0f), 180);
+        if(Camera.main != null)
+        {
+            transform.LookAt(Camera.main.transform, Camera.main.transform.up);
+            transform.Rotate(new Vector3(0f, 1f, 0f), 180);
+        }
 	}
 }

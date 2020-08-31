@@ -31,7 +31,7 @@ public class LoadMesh : MonoBehaviour {
     internal NodeHandle nh;
     void Start () {
         nh = rosmaster.getNodeHandle();
-        Load();
+        Invoke("Load",5);
     }
 	
     //Written by Eric M.
