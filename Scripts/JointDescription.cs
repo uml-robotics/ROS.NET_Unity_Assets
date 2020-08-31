@@ -18,12 +18,22 @@ public class JointDescription : MonoBehaviour {
         public Vector3 rpy;
     }
 
+    [System.Serializable]
+    public struct Limits
+    {
+        public float lower;
+        public float upper;
+        public float effort;
+        public float velocity;
+    }
+
     public string joint_name;
     public JointType type;
     public Origin origin;
     public string parent_link;
     public string child_link;
     public Vector3 axis;
+    public Limits limits;
 
     //TODO: Add other fields
 }
