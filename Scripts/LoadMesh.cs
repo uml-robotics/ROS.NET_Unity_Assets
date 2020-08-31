@@ -251,6 +251,16 @@ public class LoadMesh : MonoBehaviour {
                     }
                 }
                 joint_description.axis = axis_v == null ? Vector3.zero : new Vector3(axis_v[0], axis_v[1], axis_v[2]);
+
+                XElement limits = joint.Element("limit");
+                string lower = limits == null ? null : limits.Attribute("lower") == null ? null : limits.Attribute("lower").Value;
+                float.TryParse(lower, out joint_description.limits.lower);
+                string upper = limits == null ? null : limits.Attribute("upper") == null ? null : limits.Attribute("upper").Value;
+                float.TryParse(upper, out joint_description.limits.upper);
+                string effort = limits == null ? null : limits.Attribute("effort") == null ? null : limits.Attribute("effort").Value;
+                float.TryParse(effort, out joint_description.limits.effort);
+                string velocity = limits == null ? null : limits.Attribute("velocity") == null ? null : limits.Attribute("velocity").Value;
+                float.TryParse(velocity, out joint_description.limits.velocity);
             }
             else if (parent.Attribute("link") != null && go.name == parent.Attribute("link").Value) {
                 parent_link = go;
@@ -348,6 +358,21 @@ public class LoadMesh : MonoBehaviour {
                         {
                             foundDae = COLLADA.Load(dataPath + "/Resources/" + path);
                             path = path.Substring(0, path.LastIndexOf("."));
+                        }
+
+                        //We currently can't load stl so check if we added a dae model
+                        if (path.EndsWith(".stl") || path.EndsWith(".STL"))
+                        {
+                            string stl2Dae = System.IO.Path.ChangeExtension(path, ".dae");
+                            Debug.Log("[LoadMesh][handleLink] We don't support STL so trying DAE: " + stl2Dae);
+                            if (File.Exists(dataPath + "/Resources/" + stl2Dae))
+                            {
+                                Debug.Log("[LoadMesh][handleLink] Found a DAE model: " + stl2Dae);
+
+                                path = stl2Dae;
+                                foundDae = COLLADA.Load(dataPath + "/Resources/" + path);
+                                path = path.Substring(0, path.LastIndexOf("."));
+                            }
                         }
 
                         try {
