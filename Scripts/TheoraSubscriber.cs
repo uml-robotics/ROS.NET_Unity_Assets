@@ -10,6 +10,7 @@ using ogg_packet_ptr = System.IntPtr;
 using th_setup_info_ptr = System.IntPtr;
 using th_dec_ctx_ptr = System.IntPtr;
 using System.Threading;
+using UnityEngine.UI;
 
 /* To use this you must compile the dlls for libogg and libtheora. https://www.theora.org/downloads/
  * Then you must copy the two dlls to the Assets/Plugins folder */
@@ -778,7 +779,14 @@ public class TheoraSubscriber : MonoBehaviour
             texture.Resize(width, height);
             texture.LoadRawTextureData(bgr);
             texture.Apply();
-            Obj.GetComponent<MeshRenderer>().material.mainTexture = texture;
+            if (Obj.GetComponent<RawImage>() != null)
+            {
+                Obj.GetComponent<RawImage>().texture = texture;
+            }
+            else
+            {
+                Obj.GetComponent<MeshRenderer>().material.mainTexture = texture;
+            }
             textureMutex.Set();
         }
     }
