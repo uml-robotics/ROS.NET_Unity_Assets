@@ -15,7 +15,6 @@ public class LoadMesh : MonoBehaviour {
 
     public ROSCore rosmaster;
     public string RobotDescriptionParam = "";
-    public string ResourcesFolder = "Resources";
     private string robotdescription;
     private Dictionary<string, Color?> materials = new Dictionary<string, Color?>();
     public XDocument RobotDescription { get; private set; }
@@ -38,7 +37,7 @@ public class LoadMesh : MonoBehaviour {
         isLoaded = false;
         nh = rosmaster.getNodeHandle();
         links = new List<GameObject>();
-        Invoke("Load",5); //this delay is to give other scripts time to load b4 loadmesh takes the thread...fix later
+        Invoke("Load",5);
     }
 	
     //Written by Eric M.
@@ -351,13 +350,13 @@ public class LoadMesh : MonoBehaviour {
 
                         if (path.EndsWith(".dae"))
                         {
-                            foundDae = COLLADA.Load(dataPath + "/"+ ResourcesFolder+"/" + path);
+                            foundDae = COLLADA.Load(dataPath + "/Resources/" + path);
                             path = path.Substring(0, path.LastIndexOf("."));
                         }
 
                         if (path.EndsWith(".DAE"))
                         {
-                            foundDae = COLLADA.Load(dataPath + "/" + ResourcesFolder + "/" + path);
+                            foundDae = COLLADA.Load(dataPath + "/Resources/" + path);
                             path = path.Substring(0, path.LastIndexOf("."));
                         }
 
@@ -366,12 +365,12 @@ public class LoadMesh : MonoBehaviour {
                         {
                             string stl2Dae = System.IO.Path.ChangeExtension(path, ".dae");
                             Debug.Log("[LoadMesh][handleLink] We don't support STL so trying DAE: " + stl2Dae);
-                            if (File.Exists(dataPath + "/" + ResourcesFolder + "/" + stl2Dae))
+                            if (File.Exists(dataPath + "/Resources/" + stl2Dae))
                             {
                                 Debug.Log("[LoadMesh][handleLink] Found a DAE model: " + stl2Dae);
 
                                 path = stl2Dae;
-                                foundDae = COLLADA.Load(dataPath + "/" + ResourcesFolder + "/" + path);
+                                foundDae = COLLADA.Load(dataPath + "/Resources/" + path);
                                 path = path.Substring(0, path.LastIndexOf("."));
                             }
                         }
