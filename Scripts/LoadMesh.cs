@@ -15,7 +15,7 @@ public class LoadMesh : MonoBehaviour {
 
     public ROSCore rosmaster;
     public string RobotDescriptionParam = "";
-    public string ResourcesFolder = "Resources";
+    public string ResourcesFolder = "UnityResources";
     private string robotdescription;
     private Dictionary<string, Color?> materials = new Dictionary<string, Color?>();
     public XDocument RobotDescription { get; private set; }
