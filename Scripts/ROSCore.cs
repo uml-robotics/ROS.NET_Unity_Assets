@@ -4,15 +4,15 @@ using UnityEngine;
 using Ros_CSharp;
 using Messages;
 using System;
+using UnityEditor;
 
 public class ROSCore : MonoBehaviour {
     private bool IsROSStarted;
     private NodeHandle nh;
 
     public bool autostart;
-    public string Master_URI;
-    public string HOSTNAME;
-    //public string 
+
+    public TextAsset ROS_CONFIG;
 
     public NodeHandle getNodeHandle()
     {
@@ -47,14 +47,39 @@ public class ROSCore : MonoBehaviour {
     // Use this for initialization
     void Awake()
     {
-        IsROSStarted = false;
-        if (autostart)
-            StartROS(Master_URI, HOSTNAME);
+        if (ROS_CONFIG != null) {
+            ROS_SETTINGS ros_settings = JsonUtility.FromJson<ROS_SETTINGS>(ROS_CONFIG.text);
+
+            IsROSStarted = false;
+
+            if (autostart) {
+                StartROS(ros_settings.ROS_MASTER_URI, ros_settings.ROS_HOSTNAME, ros_settings.NODENAME);
+            }
+        }
+        else if (System.IO.File.Exists(Application.dataPath + "/ROS.txt")) {
+            Debug.LogWarning("You forgot to set ROS_CONFIG, but the default config exists. Please set it as the ROS_CONFIG");
+            throw new Exception();
+        }
+        else {
+            Debug.LogError("MISSING ROS CONFIG FILE, I've created a template for you. Please edit it with your ROS_MASTER_URI and ROS_HOSTNAME. Ending Application");
+            System.IO.File.WriteAllText(Application.dataPath + "/ROS.txt", "{\r\n\t\"ROS_MASTER_URI\": \"http://fetch1069:11311\",\r\n\t\"ROS_HOSTNAME\": \"10.10.10.57\",\r\n\t\"NODENAME\": \"JordanVR\"\r\n}");
+            throw new Exception();
+        }
+
     }
 
     // Update is called once per frame
     void Update()
     {
 
+    }
+
+
+    [System.Serializable]
+    public class ROS_SETTINGS
+    {
+        public string ROS_MASTER_URI;
+        public string ROS_HOSTNAME;
+        public string NODENAME;
     }
 }

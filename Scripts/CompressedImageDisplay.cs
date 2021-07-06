@@ -60,15 +60,6 @@ public class CompressedImageDisplay : MonoBehaviour
             topic = image_topic;
         else
             topic = topic;
-        /*
-        rosmanager.StartROS(this, () =>
-                                                           {
-                                                               nh = new NodeHandle();
-                                                               if (image_topic != null && image_topic.Length > 0)
-                                                                   topic = image_topic;
-                                                               else
-                                                                   topic = topic;
-                                                           }); */
     }
 
     private void mapcb(CompressedImage msg)

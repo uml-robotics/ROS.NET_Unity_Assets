@@ -15,7 +15,7 @@ public class LoadMesh : MonoBehaviour {
 
     public ROSCore rosmaster;
     public string RobotDescriptionParam = "";
-    public string ResourcesFolder = "Resources";
+    public string ResourcesFolder = "UnityResources";
     private string robotdescription;
     private Dictionary<string, Color?> materials = new Dictionary<string, Color?>();
     public XDocument RobotDescription { get; private set; }
@@ -351,13 +351,13 @@ public class LoadMesh : MonoBehaviour {
 
                         if (path.EndsWith(".dae"))
                         {
-                            foundDae = COLLADA.Load(dataPath + "/"+ ResourcesFolder+"/" + path);
+                            foundDae = COLLADA.Load(dataPath + "/Resources/" + ResourcesFolder+"/" + path);
                             path = path.Substring(0, path.LastIndexOf("."));
                         }
 
                         if (path.EndsWith(".DAE"))
                         {
-                            foundDae = COLLADA.Load(dataPath + "/" + ResourcesFolder + "/" + path);
+                            foundDae = COLLADA.Load(dataPath + "/Resources/" + ResourcesFolder + "/" + path);
                             path = path.Substring(0, path.LastIndexOf("."));
                         }
 
@@ -366,18 +366,18 @@ public class LoadMesh : MonoBehaviour {
                         {
                             string stl2Dae = System.IO.Path.ChangeExtension(path, ".dae");
                             Debug.Log("[LoadMesh][handleLink] We don't support STL so trying DAE: " + stl2Dae);
-                            if (File.Exists(dataPath + "/" + ResourcesFolder + "/" + stl2Dae))
+                            if (File.Exists(dataPath + "/Resources/" + ResourcesFolder + "/" + stl2Dae))
                             {
                                 Debug.Log("[LoadMesh][handleLink] Found a DAE model: " + stl2Dae);
 
                                 path = stl2Dae;
-                                foundDae = COLLADA.Load(dataPath + "/" + ResourcesFolder + "/" + path);
+                                foundDae = COLLADA.Load(dataPath + "/Resources/" + ResourcesFolder + "/" + path);
                                 path = path.Substring(0, path.LastIndexOf("."));
                             }
                         }
 
                         try {
-                            UnityEngine.Object foundMesh = Resources.Load(path) as GameObject;
+                            UnityEngine.Object foundMesh = Resources.Load(ResourcesFolder+"/" + path) as GameObject;
 
                             //handle rotations based on what axis is up for the mesh, this should fix most problems but 
                             //a better solution may need to be persued.  Potentially rewriting the meshes to be some specific orientation (probably Z)
