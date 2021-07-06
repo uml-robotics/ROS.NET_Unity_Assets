@@ -1,0 +1,5 @@
+{
+	"ROS_MASTER_URI": "http://MY_MASTER_URI:11311",
+	"ROS_HOSTNAME": "MY_IP_ADDRESS",
+	"NODENAME": "UnityVR"
+}
