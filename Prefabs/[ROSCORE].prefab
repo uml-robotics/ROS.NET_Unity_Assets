@@ -52,4 +52,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   autostart: 1
-  ROS_CONFIG: {fileID: 0}
+  ROS_CONFIG: {fileID: 4900000, guid: 05a7d7588642e4b4c9f41617d37c24a2, type: 3}

@@ -16,3 +16,9 @@ Modify the fields for ROS_MASTER_URI, ROS_HOSTNAME, and NODENAME accordingly. Yo
 textasset to the [ROSMASTER] gameobject. 
 
 You should now be able to communicate with ROS
+
+
+
+
+LoadMesh
+To use the loadmesh, place your robot models inside the Resources/UnityResources folder.
