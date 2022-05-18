@@ -407,6 +407,7 @@ public class LoadMesh : MonoBehaviour {
                             if (foundMesh != null)
                             {
                                 GameObject go = Instantiate(foundMesh as GameObject);
+                                go.layer = Physics.IgnoreRaycastLayer;
                                 if (link.Attribute("name").Value == "pedestal")
                                     Debug.Log("thin");
 
@@ -420,6 +421,7 @@ public class LoadMesh : MonoBehaviour {
                                     
                                     GameObject goParent = new GameObject();
                                     goParent.transform.parent = transform;
+                                    goParent.layer = Physics.IgnoreRaycastLayer;
                                     goParent.name = link.Attribute("name").Value;
                                     links.Add(goParent);
                                     go.transform.parent = goParent.transform;
@@ -449,7 +451,7 @@ public class LoadMesh : MonoBehaviour {
                                     }
                                     go.name = link.Attribute("name").Value;
                                     go.transform.parent = transform;
-
+                                    links.Add(go);
                                 }
                             }
                         }
@@ -471,7 +473,9 @@ public class LoadMesh : MonoBehaviour {
                     if(float.TryParse(components[0], out x) && float.TryParse(components[1], out y) && float.TryParse(components[2], out z) )
                     {
                         GameObject parent = new GameObject();
+                        parent.layer = Physics.IgnoreRaycastLayer;
                         GameObject go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                        go.layer = Physics.IgnoreRaycastLayer;
 
                         parent.name = link.Attribute("name").Value;
                         parent.transform.parent = transform;
@@ -500,7 +504,9 @@ public class LoadMesh : MonoBehaviour {
                     if (float.TryParse(length, out fLength) && float.TryParse(radius, out fRadius))
                     {
                         GameObject parent = new GameObject();
+                        parent.layer = Physics.IgnoreRaycastLayer;
                         GameObject go = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                        go.layer = Physics.IgnoreRaycastLayer;
                         parent.name = link.Attribute("name").Value;
                         parent.transform.parent = transform;
                         go.transform.parent = parent.transform;
@@ -524,9 +530,10 @@ public class LoadMesh : MonoBehaviour {
         else
         {
             GameObject go = new GameObject();
+            go.layer = Physics.IgnoreRaycastLayer;
             go.transform.parent = transform;
             go.name = link.Attribute("name").Value;
-
+            links.Add(go);
         }
         return true;
     }
