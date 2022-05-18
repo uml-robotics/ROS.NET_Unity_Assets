@@ -64,7 +64,7 @@ public class LoadMesh : MonoBehaviour {
                 tfviz = vis;
                 Parse();
             });
-            isLoaded = true;
+            
             return true;
         }
         isLoaded = false;
@@ -557,6 +557,10 @@ public class LoadMesh : MonoBehaviour {
             Parse_Single(to_be_parsed[0]);
             to_be_parsed.RemoveAt(0);
             return; //this avoids the robot spawning 1 by 1
+        }
+        else
+        {
+            isLoaded = true;
         }
 
         foreach (GameObject link in links)
