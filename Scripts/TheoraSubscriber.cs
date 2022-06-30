@@ -10,7 +10,6 @@ using ogg_packet_ptr = System.IntPtr;
 using th_setup_info_ptr = System.IntPtr;
 using th_dec_ctx_ptr = System.IntPtr;
 using System.Threading;
-using UnityEngine.UI;
 
 /* To use this you must compile the dlls for libogg and libtheora. https://www.theora.org/downloads/
  * Then you must copy the two dlls to the Assets/Plugins folder */
@@ -31,12 +30,6 @@ public class TheoraSubscriber : MonoBehaviour
     /// </summary>
     [Tooltip("The topic to subscribe to")]
     public string Topic;
-
-    /// <summary>
-    /// The GameObject to add the texture to
-    /// </summary>
-    [Tooltip("The object to add a texture to")]
-    public GameObject Obj;
 
     /*
      * Taken from libogg.h
@@ -779,14 +772,6 @@ public class TheoraSubscriber : MonoBehaviour
             texture.Resize(width, height);
             texture.LoadRawTextureData(bgr);
             texture.Apply();
-            if (Obj.GetComponent<RawImage>() != null)
-            {
-                Obj.GetComponent<RawImage>().texture = texture;
-            }
-            else
-            {
-                Obj.GetComponent<MeshRenderer>().material.mainTexture = texture;
-            }
             textureMutex.Set();
         }
     }
@@ -824,6 +809,13 @@ public class TheoraSubscriber : MonoBehaviour
         bytes_per_pixel = 3;
 
         texture = new Texture2D(0, 0, TextureFormat.RGB24, false); //This texture format seems to be BGR not RGB
+    }
+
+    /// <summary>
+    /// Get the texture that the stream is decoded to
+    /// </summary>
+    public Texture2D getTexture() {
+        return texture;
     }
 
     /// <summary>
