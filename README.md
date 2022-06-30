@@ -15,4 +15,9 @@ To get started, Add the PREFAB [ROSMASTER] to your scene,and copy the file ROS.t
 Modify the fields for ROS_MASTER_URI, ROS_HOSTNAME, and NODENAME accordingly. You may rename this file as you wish, but set this file as the
 textasset to the [ROSMASTER] gameobject. 
 
+
 You should now be able to communicate with ROS
+
+
+LoadMesh
+To use the loadmesh, place your robot models inside the Resources/UnityResources folder.

@@ -38,7 +38,8 @@ public class LoadMesh : MonoBehaviour {
         isLoaded = false;
         nh = rosmaster.getNodeHandle();
         links = new List<GameObject>();
-        Invoke("Load",5); //this delay is to give other scripts time to load b4 loadmesh takes the thread...fix later
+        Load();
+        //Invoke("Load",5); //this delay is to give other scripts time to load b4 loadmesh takes the thread...fix later
     }
 	
     //Written by Eric M.
@@ -63,12 +64,15 @@ public class LoadMesh : MonoBehaviour {
                 tfviz = vis;
                 Parse();
             });
-            isLoaded = true;
+            
             return true;
         }
         isLoaded = false;
         return false;
     }
+
+
+    List<XElement> to_be_parsed = new List<XElement>();
 
     private bool Parse(IEnumerable<XElement> elements = null)
     {
@@ -89,23 +93,29 @@ public class LoadMesh : MonoBehaviour {
         //grab joints and links
         foreach (XElement element in elements)
         {
-            if (element.Name == "material")
-                handleMaterial(element); 
-
-            if (element.Name == "link")
-                handleLink(element);
-
-            if (element.Name == "joint")
-                handleJoint(element);
-
-            if (element.Name == "gazebo")
-            {
-                XElement link = element.Element("link");
-                if (link != null)
-                    handleLink(link);
-            }
+            to_be_parsed.Add(element);
         }
         
+        return true;
+    }
+
+    private bool Parse_Single(XElement element)
+    {
+        if (element.Name == "material")
+            handleMaterial(element);
+
+        if (element.Name == "link")
+            handleLink(element);
+
+        if (element.Name == "joint")
+            handleJoint(element);
+
+        if (element.Name == "gazebo")
+        {
+            XElement link = element.Element("link");
+            if (link != null)
+                handleLink(link);
+        }
         return true;
     }
     
@@ -407,6 +417,7 @@ public class LoadMesh : MonoBehaviour {
                             if (foundMesh != null)
                             {
                                 GameObject go = Instantiate(foundMesh as GameObject);
+                                go.layer = Physics.IgnoreRaycastLayer;
                                 if (link.Attribute("name").Value == "pedestal")
                                     Debug.Log("thin");
 
@@ -420,6 +431,7 @@ public class LoadMesh : MonoBehaviour {
                                     
                                     GameObject goParent = new GameObject();
                                     goParent.transform.parent = transform;
+                                    goParent.layer = Physics.IgnoreRaycastLayer;
                                     goParent.name = link.Attribute("name").Value;
                                     links.Add(goParent);
                                     go.transform.parent = goParent.transform;
@@ -449,7 +461,7 @@ public class LoadMesh : MonoBehaviour {
                                     }
                                     go.name = link.Attribute("name").Value;
                                     go.transform.parent = transform;
-
+                                    links.Add(go);
                                 }
                             }
                         }
@@ -471,7 +483,9 @@ public class LoadMesh : MonoBehaviour {
                     if(float.TryParse(components[0], out x) && float.TryParse(components[1], out y) && float.TryParse(components[2], out z) )
                     {
                         GameObject parent = new GameObject();
+                        parent.layer = Physics.IgnoreRaycastLayer;
                         GameObject go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                        go.layer = Physics.IgnoreRaycastLayer;
 
                         parent.name = link.Attribute("name").Value;
                         parent.transform.parent = transform;
@@ -500,7 +514,9 @@ public class LoadMesh : MonoBehaviour {
                     if (float.TryParse(length, out fLength) && float.TryParse(radius, out fRadius))
                     {
                         GameObject parent = new GameObject();
+                        parent.layer = Physics.IgnoreRaycastLayer;
                         GameObject go = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                        go.layer = Physics.IgnoreRaycastLayer;
                         parent.name = link.Attribute("name").Value;
                         parent.transform.parent = transform;
                         go.transform.parent = parent.transform;
@@ -524,9 +540,10 @@ public class LoadMesh : MonoBehaviour {
         else
         {
             GameObject go = new GameObject();
+            go.layer = Physics.IgnoreRaycastLayer;
             go.transform.parent = transform;
             go.name = link.Attribute("name").Value;
-
+            links.Add(go);
         }
         return true;
     }
@@ -535,6 +552,16 @@ public class LoadMesh : MonoBehaviour {
     //Position meshes appropriately in space 
     void Update()
     {
+        if (to_be_parsed.Count > 0)
+        {
+            Parse_Single(to_be_parsed[0]);
+            to_be_parsed.RemoveAt(0);
+            return; //this avoids the robot spawning 1 by 1
+        }
+        else
+        {
+            isLoaded = true;
+        }
 
         foreach (GameObject link in links)
         {
