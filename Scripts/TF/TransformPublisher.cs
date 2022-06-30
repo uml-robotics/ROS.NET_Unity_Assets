@@ -23,7 +23,6 @@ public class TransformPublisher : MonoBehaviour {
     void Start () {
         NodeHandle nh = rosmaster.getNodeHandle();
         tfPub = nh.advertise<Messages.tf.tfMessage>("/tf", 100);
-
     }
 	
 	// Update is called once per frame
