@@ -5,15 +5,18 @@ using Ros_CSharp;
 using Messages;
 using System;
 using UnityEditor;
+using System.IO;
 
 public class ROSCore : MonoBehaviour {
     private bool IsROSStarted;
     private NodeHandle nh;
 
     public bool autostart;
+    public bool startWithLoadedProfile;
 
     public TextAsset ROS_CONFIG;
 
+    private string rosProfilePath = "Assets/Ros_Profiles/main.json";
     public NodeHandle getNodeHandle()
     {
         if (IsROSStarted)
@@ -47,7 +50,20 @@ public class ROSCore : MonoBehaviour {
     // Use this for initialization
     void Awake()
     {
-        if (ROS_CONFIG != null) {
+        if (startWithLoadedProfile)
+        {
+
+            ROS_SETTINGS ros_settings = JsonUtility.FromJson<ROS_SETTINGS>(File.ReadAllText(rosProfilePath));
+
+            IsROSStarted = false;
+
+            if (autostart)
+            {
+                StartROS(ros_settings.ROS_MASTER_URI, ros_settings.ROS_HOSTNAME, ros_settings.NODENAME);
+            }
+
+        }
+        else if (ROS_CONFIG != null) {
             ROS_SETTINGS ros_settings = JsonUtility.FromJson<ROS_SETTINGS>(ROS_CONFIG.text);
 
             IsROSStarted = false;
