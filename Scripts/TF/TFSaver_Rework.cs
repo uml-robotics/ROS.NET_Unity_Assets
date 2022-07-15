@@ -27,7 +27,7 @@ public class TFSaver_Rework : MonoBehaviour
 	Publisher<Messages.tf.tfMessage> pub;
 
 	//Test Stuff
-	public uint time = 10, storageTime;
+	public uint storageTime = 10;
 	public string link, child;
 	public double seconds;
 
@@ -38,9 +38,9 @@ public class TFSaver_Rework : MonoBehaviour
 		tfstaticsub = nh.subscribe<Messages.tf.tfMessage>("/tf_static", 0, tf_static_callback);
 		tfsub = nh.subscribe<Messages.tf.tfMessage>("/tf", 0, tf_callback);
 		pub = nh.advertise<Messages.tf.tfMessage>("/tf", 10);
-	}
+    }
 
-	private void tf_callback(tfMessage msg)
+    private void tf_callback(tfMessage msg)
 	{
 		//Queues recieved transforms to be added to the dictionary
 		lock (transforms)
@@ -94,6 +94,7 @@ public class TFSaver_Rework : MonoBehaviour
 							SortedList<double, Messages.geometry_msgs.TransformStamped> dict = new SortedList<double, Messages.geometry_msgs.TransformStamped>();
 							dict.Add(time, t);
 							stampedDict.Add(key, dict);
+							Debug.Log("[TFCache]: adding key " + key + " to the tf dictionary");
 							StartCoroutine(RemoveTransform(key, time));
 
 						}
@@ -113,13 +114,15 @@ public class TFSaver_Rework : MonoBehaviour
 		}
 
 		double nsecs = (double)ROS.GetTime().data.sec  + ((double)ROS.GetTime().data.nsec / SEC_TO_NSEC) - seconds;
-		
-		Messages.geometry_msgs.TransformStamped m = getTransformStamped(link, child,nsecs);
-		if(m != null)
-        {
+		if (nsecs < 0) { Debug.Log("[TFCache]: Haven't waited enough yet I guess");  return; }
+		Messages.geometry_msgs.TransformStamped m = getTransformStamped(link, child, nsecs);
+		if (m != null)
+		{
 			//Debug.Log("{" + m.transform.translation.x + "," + m.transform.translation.y + "," + m.transform.translation.z + "}");
 			//Debug.Log(" !" + m.header.stamp.data.sec + "." + m.header.stamp.data.nsec);
-
+			//m.header = new Messages.std_msgs.Header();
+			//m.header.frame_id = link;
+			//m.header.stamp = ROS.GetTime();
 			m.child_frame_id = child + "_delayed";
 			m.Serialized = null;
 
@@ -128,72 +131,73 @@ public class TFSaver_Rework : MonoBehaviour
 			tfPub.transforms = new Messages.geometry_msgs.TransformStamped[1];
 			tfPub.transforms[0] = m;
 			pub.publish(tfPub);
-        }
-
-
+		}
 	}
 
 	public Messages.geometry_msgs.TransformStamped getTransformStamped(string baseFrame, string childFrame, double nTime)
 	{
 		string key = baseFrame + childFrame;
-
-        if (!stampedDict.ContainsKey(key))
+		lock (stampedDict)
         {
-			Debug.Log("No records of stamped transforms between these two frames found.");
-			return null;
-        }
-        else
-        {
-			if(nTime == 0) //Return latest stamped transform
-            {
-				int i = stampedDict[key].Count;
-				return stampedDict[key].Values[i-1];
-            }
-
-
-			if (stampedDict[key].ContainsKey(nTime)) //You got the exact time, thats crazy
+			if (!stampedDict.ContainsKey(key))
 			{
-				return stampedDict[key][nTime];
+				Debug.Log("No records of stamped transforms between these two frames found.");
+				return null;
 			}
 			else
 			{
-				int numKeys = stampedDict[key].Count;
-				if (stampedDict[key].Keys[0] > nTime || stampedDict[key].Keys[numKeys - 1] < nTime) //Time is ahead or before any records
+				if (nTime == 0) //Return latest stamped transform
 				{
-					Debug.Log("The time you are trying to access is either ahead of our records or before");
-					return null;
+					int i = stampedDict[key].Count;
+					return stampedDict[key].Values[i - 1];
+				}
+
+
+				if (stampedDict[key].ContainsKey(nTime)) //You got the exact time, thats crazy
+				{
+					return stampedDict[key][nTime];
 				}
 				else
 				{
-					if (numKeys == 1)// One value in this key
+					int numKeys = stampedDict[key].Count;
+					if (numKeys == 0) { Debug.Log("[TFCache]: Currently no tfs for key " + key); return null; }
+					if (stampedDict[key].Keys[0] > nTime || stampedDict[key].Keys[numKeys - 1] < nTime) //Time is ahead or before any records
 					{
-						return stampedDict[key][0];
+						Debug.Log("The time you are trying to access is either ahead of our records or before");
+						return null;
 					}
-					else if (numKeys > 1)// More than one value
+					else
 					{
-						int min = 0, max = numKeys;
-						while (max - min >= 2)
+						if (numKeys == 1)// One value in this key
 						{
-							int mid = (max + min) / 2;
-							if(stampedDict[key].Keys[mid] > nTime)
-                            {
-								max = mid;
-                            }
-                            else
-                            {
-								min = mid;
-                            }
+							return stampedDict[key][0];
+						}
+						else if (numKeys > 1)// More than one value
+						{
+							int min = 0, max = numKeys;
+							while (max - min >= 2)
+							{
+								int mid = (max + min) / 2;
+								if (stampedDict[key].Keys[mid] > nTime)
+								{
+									max = mid;
+								}
+								else
+								{
+									min = mid;
+								}
+							}
+
+							double toReturnKey = stampedDict[key].Keys[(max + min) / 2];
+							//Debug.Log(toReturnKey + " " + nTime);
+							return stampedDict[key][toReturnKey];
 						}
 
-						double toReturnKey = stampedDict[key].Keys[(max + min) / 2];
-						//Debug.Log(toReturnKey + " " + nTime);
-						return stampedDict[key][toReturnKey];
+
 					}
-
-
 				}
 			}
-        }
+		}
 		return null;
 	}
 
