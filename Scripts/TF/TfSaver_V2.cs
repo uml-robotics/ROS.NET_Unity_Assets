@@ -446,7 +446,7 @@ class BinaryTree
 		Node nodeWithChildId = Find(this.root, ts.child_frame_id);
 
 		
-		if (!nodeWithChildId == null)
+		if (!(nodeWithChildId == null))
 		{
 			nodeWithChildId.frames.Remove(time);
 			//Debug.Log("removed");
