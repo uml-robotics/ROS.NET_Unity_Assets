@@ -298,7 +298,14 @@ class BinaryTree
 		}
 	}
 
-	
+	public TransformStamped GetTransform(string parent_id, string child_id, Messages.std_msgs.Time time)
+    {
+
+		double new_fortmat = (double)time.data.sec + ((double)time.data.nsec / SEC_TO_NSEC);
+		return GetTransform(parent_id, child_id, new_fortmat);
+    }
+
+
 	public TransformStamped GetTransform(string parent_id,string child_id,double time)
     {
 
