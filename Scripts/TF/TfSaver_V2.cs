@@ -19,6 +19,7 @@ public class TfSaver_V2 : MonoBehaviour
 	private NodeHandle nh = null;
 	private Subscriber<Messages.tf.tfMessage> tfsub, tfstaticsub;
 	private Queue<Messages.tf.tfMessage> transforms = new Queue<Messages.tf.tfMessage>();
+	private Queue<Messages.tf.tfMessage> static_transforms = new Queue<Messages.tf.tfMessage>();
 	BinaryTree tree;
 	Dictionary<string , Messages.geometry_msgs.TransformStamped> stampedDictStatic = new Dictionary<string, Messages.geometry_msgs.TransformStamped>();
 
@@ -32,6 +33,7 @@ public class TfSaver_V2 : MonoBehaviour
 	public uint storageTime = 10;
 	public string link, child;
 	public double seconds;
+	public bool getReverse;
 
 	void Start()
 	{
@@ -56,24 +58,10 @@ public class TfSaver_V2 : MonoBehaviour
 
 	private void tf_static_callback(tfMessage msg)
 	{   //update existing statics - todo
-		lock (stampedDictStatic)
-		{
-			foreach (Messages.geometry_msgs.TransformStamped t in msg.transforms)
-			{
-				string key = t.header.frame_id + t.child_frame_id;
-				Debug.Log("found " + key);
-				if (stampedDictStatic.ContainsKey(key))
-				{
-					stampedDictStatic.Remove(key);
-					stampedDictStatic.Add(key, t);
-				}
-				else
-				{
-					stampedDictStatic.Add(key, t);
-				}
-
-			}
-		}
+        lock (static_transforms)
+        {
+			static_transforms.Enqueue(msg);
+        }
 	} //work later
 
 	void Update()
@@ -95,9 +83,32 @@ public class TfSaver_V2 : MonoBehaviour
 			}
 		}
 
+        //Static queue
+        lock (static_transforms)
+        {
+			while(static_transforms.Count > 0){
+				Messages.tf.tfMessage tm = static_transforms.Dequeue();
+
+				foreach (Messages.geometry_msgs.TransformStamped t in tm.transforms)
+				{
+
+					tree.AddTransform(t);
+					StartCoroutine(Remove(t));
+				}
+			}
+        }
+
 		double nsecs = (double)ROS.GetTime().data.sec + ((double)ROS.GetTime().data.nsec / SEC_TO_NSEC) - seconds;
 		if (nsecs < 0) { Debug.Log("[TFCache]: Haven't waited enough yet I guess"); return; }
-		Messages.geometry_msgs.TransformStamped m = tree.GetTransform(link, child, nsecs);
+		Messages.geometry_msgs.TransformStamped m;
+		if (!getReverse)
+		{
+			m = tree.GetTransform(link, child, nsecs);
+        }
+        else
+        {
+			m = tree.GetTransformReverse(link, child, nsecs);
+        }
 		if (m != null)
 		{
 			//Debug.Log("{" + m.transform.translation.x + "," + m.transform.translation.y + "," + m.transform.translation.z + "}");
@@ -105,7 +116,7 @@ public class TfSaver_V2 : MonoBehaviour
 			//m.header = new Messages.std_msgs.Header();
 			//m.header.frame_id = link;
 			//m.header.stamp = ROS.GetTime();
-			m.child_frame_id = child + "_delayed";
+			m.child_frame_id = m.child_frame_id + "_delayed";
 			m.Serialized = null;
 
 
@@ -116,27 +127,7 @@ public class TfSaver_V2 : MonoBehaviour
 		}
 	}
 
-	
 
-	public Messages.geometry_msgs.TransformStamped getTransformStampedStatic(string baseFrame, string childFrame)
-    {
-		string key = baseFrame + childFrame;
-
-		lock (stampedDictStatic)
-		{
-			if (stampedDictStatic.ContainsKey(key))
-			{
-				//Debug.Log(key + " found!");
-				//Debug.Log(stampedDictStatic[key].transform.translation.x);
-				return stampedDictStatic[key];
-			}
-			else
-			{
-				//Debug.Log("Static Transform log of " + key + " was not found");
-				return null;
-			}
-		}
-    }
 	IEnumerator Remove(TransformStamped ts)
 	{
 		//Remove stored transform after designated time
@@ -349,7 +340,7 @@ class BinaryTree
 			ts.header = new Messages.std_msgs.Header();
 			ts.header.stamp = new Messages.std_msgs.Time();
 			ts.header.frame_id = parent_id;
-			ts.child_frame_id = child_id;
+			ts.child_frame_id = child_id;		
 			ts.header.stamp.data.sec = (uint)time;
 			//Queue of all transforms
 			Queue<TransformStamped> qTransforms = new Queue<TransformStamped>();
@@ -365,10 +356,12 @@ class BinaryTree
 				qTransforms.Enqueue(e);
 
             }
-			//Add up positions and rotationsfor new reference position
+			//Add up positions and rotations for new reference position
 			TransformStamped before = qTransforms.Dequeue();
 			Debug.Log(qTransforms.Count);
 			Messages.geometry_msgs.Transform newTransform = new Messages.geometry_msgs.Transform();
+			newTransform.translation = new Messages.geometry_msgs.Vector3();
+			newTransform.rotation = new Messages.geometry_msgs.Quaternion();
 			bool isFirst = true;
 			while(qTransforms.Count > 0)
             {
@@ -376,13 +369,137 @@ class BinaryTree
                 if (isFirst)
                 {
 					//math with before and after
+
 					newTransform = AddTwoTransforms(after.transform, before.transform);
+
 					isFirst = false;
                 }
                 else
+				{ 	
+					newTransform = AddTwoTransforms(after.transform, before.transform);
+				}
+            }
+
+			//return :)
+			ts.transform = newTransform;
+
+			return ts;
+		}
+    }
+	public TransformStamped GetTransformReverse(string parent_id,string child_id,double time)
+    {
+
+		Node childNode = Find(this.root, child_id);
+		Node parentNode = Find(this.root, parent_id);
+
+		if(parentNode == null || childNode == null)
+        {
+			Debug.Log("Parent or Child not found");
+			return null;
+        }
+
+        if (parentNode.children.ContainsKey(child_id)) //No gap between frames
+        {
+			TransformStamped tf = SearchFramesForTransform(childNode, time);
+			if(tf == null)
+            {
+				return null;
+            }
+			tf.transform.translation.x *= -1;
+			tf.transform.translation.y *= -1;
+			tf.transform.translation.z *= -1;
+			tf.child_frame_id = parent_id;
+			tf.header.frame_id = child_id;
+
+			return tf;
+        }
+        else //Gap between frames :(
+        {
+			Debug.Log(parent_id + " " + child_id);
+			//Queue up parent nodes
+			Queue<Node> qNodes = new Queue<Node>();
+			Node currNode = Find(parentNode, childNode.parent_id);
+			qNodes.Enqueue(currNode);
+			while(currNode.parent_id != parent_id)
+            {
+				currNode = Find(parentNode, currNode.parent_id);
+				if(currNode == null)
                 {
-					newTransform = AddTwoTransforms(after.transform, newTransform);
+					Debug.Log("Intermedian link " + currNode.parent_id + " not made yet");
+					return null;
                 }
+				//Debug.Log(currNode.frame_id + " queued!");
+				qNodes.Enqueue(currNode);
+            }
+			//Reverse the queue
+			Stack<Node> sNodes = new Stack<Node>();
+			sNodes.Push(parentNode);
+			while(!(qNodes.Count > 0))
+            {
+				sNodes.Push(qNodes.Dequeue());
+            }
+			Debug.Log(sNodes.Count);
+			//Make a new transform
+			TransformStamped ts = new TransformStamped();
+			ts.header = new Messages.std_msgs.Header();
+			ts.header.stamp = new Messages.std_msgs.Time();
+			ts.header.frame_id = child_id;
+			ts.child_frame_id = parent_id;		
+			ts.header.stamp.data.sec = (uint)time;
+			//Queue of all transforms
+			Queue<TransformStamped> qTransforms = new Queue<TransformStamped>();
+			while(sNodes.Count > 0)
+			{
+				Node currQNode = sNodes.Pop();
+				TransformStamped e = SearchFramesForTransform(currQNode, time);
+				if(e == null)
+                {
+					if (currQNode.frame_id == this.root.frame_id)
+					{
+						e = new TransformStamped();
+						e.transform = new Messages.geometry_msgs.Transform();
+						e.transform.translation = new Messages.geometry_msgs.Vector3();
+						e.transform.rotation = new Messages.geometry_msgs.Quaternion();
+						e.transform.translation.x = 0;
+						e.transform.translation.y = 0;
+						e.transform.translation.z = 0;
+
+						e.transform.rotation.x = 0;
+						e.transform.rotation.y = 0;
+						e.transform.rotation.z = 0;
+						e.transform.rotation.w = 0;
+					}
+					else
+					{
+						Debug.Log("Transform not found, returning null INFO:\nID: " + currQNode.frame_id);
+						return null;
+					}
+                }
+				qTransforms.Enqueue(e);
+
+            }
+			//Add up positions and rotations for new reference position
+			TransformStamped before = qTransforms.Dequeue();
+			Debug.Log(qTransforms.Count);
+			Messages.geometry_msgs.Transform newTransform = new Messages.geometry_msgs.Transform();
+			newTransform.translation = new Messages.geometry_msgs.Vector3();
+			newTransform.rotation = new Messages.geometry_msgs.Quaternion();
+			bool isFirst = true;
+			while(qTransforms.Count > 0)
+            {
+				TransformStamped after = qTransforms.Dequeue();
+                if (isFirst)
+                {
+					//math with before and after
+
+					newTransform = AddTwoTransformsReverse(after.transform, before.transform);
+
+					isFirst = false;
+                }
+                else
+				{ 	
+					newTransform = AddTwoTransformsReverse(after.transform, before.transform);
+				}
             }
 
 			//return :)
@@ -422,6 +539,42 @@ class BinaryTree
 		c.rotation.w = cQ.w;
 		return c;
     }
+	private Messages.geometry_msgs.Transform AddTwoTransformsReverse(Messages.geometry_msgs.Transform a, Messages.geometry_msgs.Transform b)
+    {
+		Messages.geometry_msgs.Transform c = new Messages.geometry_msgs.Transform();
+		c.translation = new Messages.geometry_msgs.Vector3();
+		Debug.Log("a " + (a.translation == null).ToString());
+		Debug.Log("b " + (b.translation == null).ToString());
+		Debug.Log("c " + (c.translation == null).ToString());
+
+		c.translation.x = (a.translation.x + b.translation.x) * -1;
+		c.translation.y = (a.translation.y + b.translation.y) * -1;
+		c.translation.z = (a.translation.z + b.translation.z) * -1;
+
+		UnityEngine.Quaternion aQ = new UnityEngine.Quaternion();
+		UnityEngine.Quaternion bQ= new UnityEngine.Quaternion();
+		aQ.x = (float)a.rotation.x;
+		aQ.y = (float)a.rotation.y;
+		aQ.z = (float)a.rotation.z;
+		aQ.w = (float)a.rotation.w;
+
+		bQ.x = (float)b.rotation.x;
+		bQ.y = (float)b.rotation.y;
+		bQ.z = (float)b.rotation.z;
+		bQ.w = (float)b.rotation.w;
+
+		UnityEngine.Quaternion cQ = aQ * bQ;
+
+		c.rotation = new Messages.geometry_msgs.Quaternion();
+
+		c.rotation.x = cQ.x;
+		c.rotation.y = cQ.y;
+		c.rotation.z = cQ.z;
+		c.rotation.w = cQ.w;
+		return c;
+    }
+
+
 	public void RemoveTransform(TransformStamped ts)
     {
 		double time = (double)ts.header.stamp.data.sec + ((double)ts.header.stamp.data.nsec / SEC_TO_NSEC);
@@ -504,7 +657,12 @@ class BinaryTree
 			if (!nodeWithChildId.frames.ContainsKey(time))
 			{
 				nodeWithChildId.frames.Add(time, ts);
-			}
+            }
+            else
+            {
+				nodeWithChildId.frames.Remove(time);
+				nodeWithChildId.frames.Add(time, ts);
+            }
         }
 		
     }
