@@ -105,11 +105,11 @@ public class TfSaver_V2 : MonoBehaviour
 		Messages.geometry_msgs.TransformStamped m;
 		if (!getReverse)
 		{
-			m = tree.GetTransformV3(link, child, nsecs);
+			m = tree.GetTransform(link, child, nsecs);
         }
         else
         {
-			m = tree.GetTransformV3(link, child, nsecs);
+			m = tree.GetTransformReverse(link, child, nsecs);
         }
 		if (m != null)
 		{
@@ -184,7 +184,7 @@ class BinaryTree
 
 	public BinaryTree(string top_frame_id)
     {
-		Node r = new Node(top_frame_id,null,true);
+		Node r = new Node(top_frame_id,null,false);
 		this.root = r;
 
     }
@@ -289,16 +289,7 @@ class BinaryTree
 		Node childNode = Find(this.root, child_id);
 		Node parentNode = Find(this.root, parent_id);
 
-		if (parentNode == null || childNode == null)
-		{
-			Debug.Log("Parent or Child not found");
-			return null;
-		}
-
-		if (parentNode.children.ContainsKey(child_id)) //No gap between frames
-		{
-			return SearchFramesForTransform(childNode, time);
-		}
+		
 
 		List<Node> path = GetPathOfTwoNodes(parent_id, child_id);
 		Queue<Node> pathQ = new Queue<Node>();
@@ -575,6 +566,7 @@ class BinaryTree
 		{
             if (n.isStatic) // just get the one frame stored there
             {
+				Debug.Log(n.frame_id);
 				return stampedDict[0];
             }
 			if (time == 0) //Return latest stamped transform
