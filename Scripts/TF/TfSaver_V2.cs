@@ -77,7 +77,7 @@ public class TfSaver_V2 : MonoBehaviour
 				foreach (Messages.geometry_msgs.TransformStamped t in tm.transforms)
 				{
 
-					tree.AddTransform(t);
+					tree.AddTransform(t,false);
 					StartCoroutine(Remove(t));
 				}
 			}
@@ -92,22 +92,24 @@ public class TfSaver_V2 : MonoBehaviour
 				foreach (Messages.geometry_msgs.TransformStamped t in tm.transforms)
 				{
 
-					tree.AddTransform(t);
+					tree.AddTransform(t,true);
 					StartCoroutine(Remove(t));
 				}
 			}
         }
+
+		//tree.GetPathOfTwoNodes("/hat", "/robert");
 
 		double nsecs = (double)ROS.GetTime().data.sec + ((double)ROS.GetTime().data.nsec / SEC_TO_NSEC) - seconds;
 		if (nsecs < 0) { Debug.Log("[TFCache]: Haven't waited enough yet I guess"); return; }
 		Messages.geometry_msgs.TransformStamped m;
 		if (!getReverse)
 		{
-			m = tree.GetTransform(link, child, nsecs);
+			m = tree.GetTransformV3(link, child, nsecs);
         }
         else
         {
-			m = tree.GetTransformReverse(link, child, nsecs);
+			m = tree.GetTransformV3(link, child, nsecs);
         }
 		if (m != null)
 		{
@@ -116,7 +118,7 @@ public class TfSaver_V2 : MonoBehaviour
 			//m.header = new Messages.std_msgs.Header();
 			//m.header.frame_id = link;
 			//m.header.stamp = ROS.GetTime();
-			m.child_frame_id = m.child_frame_id + "_delayed";
+			m.child_frame_id = child + "_delayed";
 			m.Serialized = null;
 
 
@@ -151,15 +153,17 @@ class Node
 {
     public string frame_id;
 	public string parent_id;
+	public bool isStatic;
     public SortedList<double, TransformStamped> frames;
 	public Dictionary<string,Node> children;
 
-	public Node(string id,string parentId)
+	public Node(string id,string parentId,bool isstatic)
     {
 		this.frame_id = id;
 		this.parent_id = parentId;
 		this.frames = new SortedList<double, TransformStamped>();
 		this.children = new Dictionary<string, Node>();
+		this.isStatic = isstatic;
     }
 }
 
@@ -180,7 +184,7 @@ class BinaryTree
 
 	public BinaryTree(string top_frame_id)
     {
-		Node r = new Node(top_frame_id,null);
+		Node r = new Node(top_frame_id,null,true);
 		this.root = r;
 
     }
@@ -216,6 +220,322 @@ class BinaryTree
 		//Debug.Log("Could not find " + id);
 		return null;
 	}
+	//New Algorithm Shtuffs - Very unfinished, very much doesnt work,pathing does, math doesnt :(
+	public List<Node> GetPathFromRoot(string id)
+    {
+		Queue<Node> q = new Queue<Node>();
+		List<Node> visited = new List<Node>();
+
+		//Get List of Entire Bfs
+		q.Enqueue(this.root);
+		while (q.Count > 0)
+		{
+
+			Node currNode = q.Dequeue();
+			visited.Add(currNode);
+
+			if(currNode.frame_id == id)
+            {
+				break;
+            }
+
+			foreach (KeyValuePair<string, Node> childEntry in currNode.children)
+			{
+				if (!visited.Contains(childEntry.Value))
+				{
+					q.Enqueue(childEntry.Value);
+				}
+			}
+		}
+
+		Node currLevel = visited[0];
+		Stack<Node> path = new Stack<Node>();
+		for (int i = visited.Count - 1; i >= 0; i--)
+        {
+			if(visited[i].frame_id == id || visited[i].frame_id == currLevel.parent_id)
+            {
+				path.Push(visited[i]);
+				currLevel = visited[i];
+            }
+        }
+
+		if(path.Count == 0)
+        {
+			Debug.Log("Path empty");
+			return null;
+        }
+
+		List<Node> p = new List<Node>();
+
+		foreach (Node n in path)
+		{
+			p.Add(n);
+		}
+		//Debug.Log(p);
+
+		string path_string = "";
+		foreach(Node n in p)
+        {
+			path_string += n.frame_id + " ";
+        }
+
+		Debug.Log(path_string);
+
+		return p;
+    }
+
+	public TransformStamped GetTransformV3(string parent_id, string child_id,double time)
+    {
+		Node childNode = Find(this.root, child_id);
+		Node parentNode = Find(this.root, parent_id);
+
+		if (parentNode == null || childNode == null)
+		{
+			Debug.Log("Parent or Child not found");
+			return null;
+		}
+
+		if (parentNode.children.ContainsKey(child_id)) //No gap between frames
+		{
+			return SearchFramesForTransform(childNode, time);
+		}
+
+		List<Node> path = GetPathOfTwoNodes(parent_id, child_id);
+		Queue<Node> pathQ = new Queue<Node>();
+
+		foreach(Node n in path)
+        {
+			pathQ.Enqueue(n);
+        }
+
+		if(path == null)
+        {
+			return null;
+        }
+
+		TransformStamped newTs = new TransformStamped();
+		newTs.transform = new Messages.geometry_msgs.Transform();
+		newTs.header = new Messages.std_msgs.Header();
+		newTs.transform.translation = new Messages.geometry_msgs.Vector3();
+		newTs.transform.rotation = new Messages.geometry_msgs.Quaternion();
+		newTs.header.stamp = new Messages.std_msgs.Time();
+
+		newTs.header.frame_id = parent_id;
+		newTs.child_frame_id = child_id;
+		newTs.header.stamp.data.sec = (uint)time;
+
+
+		Node before = pathQ.Dequeue();
+		TransformStamped e = SearchFramesForTransform(before, time);
+		if(e == null)
+        {
+			return null;
+        }
+		newTs.transform = e.transform;
+
+		if(newTs.transform == null)
+        {
+			return null;
+        }
+
+		//maybe print the q
+
+		while (pathQ.Count > 1)
+        {
+			Debug.Log(pathQ.Count);
+			Node after = pathQ.Dequeue();
+
+			if(before.parent_id == after.frame_id) //if a is parent of b
+            {
+				TransformStamped a = SearchFramesForTransform(after, time);
+				if(a == null)
+                {
+					return null;
+                }
+				newTs.transform = AddTwoTransforms(a.transform,newTs.transform);
+            }else if(before.frame_id == after.parent_id)//if b is parent of a
+            {
+				TransformStamped a = SearchFramesForTransform(after, time);
+				if (a == null)
+				{
+					return null;
+				}
+				newTs.transform = AddTwoTransformsReverse(a.transform, newTs.transform);
+            }
+            else //same level
+            {
+				TransformStamped a = SearchFramesForTransform(after, time);
+				if (a == null)
+				{
+					return null;
+				}
+				newTs.transform = AddTwoTransformsSiblings(a.transform, newTs.transform);
+            }
+
+			before = after;
+        }
+
+		Debug.Log("we dont geet here do we?");
+		return newTs;
+    }
+
+	public List<Node> GetPathOfTwoNodes(string id_a, string id_b)
+    {
+		bool isDirectLine = false, isAUnderB = false;
+		string commonAncestorId = "";
+		//Get Paths
+		List<Node> path_a = GetPathFromRoot(id_a); //paths are returned, dest->parent->parent->...->root
+		List<Node> path_b = GetPathFromRoot(id_b);
+
+
+
+		if(path_a == null || path_b == null)
+        {
+			Debug.Log("Either of the two nodes doesnt exist");
+			return null;
+        }
+
+		//Find Common Ancestor id
+		
+		if(path_a.Count < path_b.Count || path_a.Count == path_b.Count)
+        {
+			for(int i = 0; i < path_a.Count; i++)
+            {
+                if (path_a[i].frame_id == path_b[i].frame_id)
+                {
+					commonAncestorId = path_a[i].frame_id;
+					continue;
+                }
+				break;
+            }
+        }
+        else
+        {
+			for (int i = 0; i < path_b.Count; i++)
+			{
+				if (path_a[i].frame_id == path_b[i].frame_id)
+				{
+					commonAncestorId = path_a[i].frame_id;
+					continue;
+				}
+				break;
+			}
+		}
+
+		Debug.Log(commonAncestorId);
+
+        //Direct Line Test
+        foreach (Node n in path_a)
+        {
+            if (n.frame_id == id_b)
+            {
+				isAUnderB = true;
+				isDirectLine = true;
+            }
+        }
+
+		foreach(Node n in path_b)
+        {
+			if(n.frame_id == id_a)
+            {
+				isDirectLine = true;
+            }
+        }
+
+		//Calculate New Path
+		List<Node> newPath = new List<Node>();
+
+        if (isDirectLine)
+        {
+			if(path_b.Count > path_a.Count)
+            {
+				bool reachedAncestor = false;
+				foreach(Node n in path_b)
+                {
+					if(n.frame_id == commonAncestorId && !reachedAncestor)
+                    {
+						reachedAncestor = true;
+                    }
+
+                    if (reachedAncestor)
+                    {
+						newPath.Add(n);
+                    }
+                }
+            }
+            else
+            {
+				bool reachedAncestor = false;
+				foreach (Node n in path_a)
+				{
+					if (n.frame_id == commonAncestorId && !reachedAncestor)
+					{
+						reachedAncestor = true;
+					}
+
+					if (reachedAncestor)
+					{
+						newPath.Add(n);
+					}
+				}
+			}
+        }
+        else
+        {
+			//reverse go up first path till we hit common ancestor
+			//then add second path - common ancestor
+			bool reachedAncestor = false;
+			for (int i = path_a.Count - 1; i >= 0; i--)
+            {
+				if(path_a[i].frame_id == commonAncestorId && !reachedAncestor)
+                {
+					reachedAncestor = true;
+                }
+
+                if (!reachedAncestor)
+                {
+					newPath.Add(path_a[i]);
+                }
+            }
+
+			reachedAncestor = false;
+			foreach (Node n in path_b)
+			{
+				if (reachedAncestor)
+				{
+					newPath.Add(n);
+				}
+
+				if (n.frame_id == commonAncestorId && !reachedAncestor)
+				{
+					reachedAncestor = true;
+				}
+
+			}
+
+		}
+		//Reverse Direct Line Tree if a is lower than b
+		if (isAUnderB && isDirectLine)
+		{
+			newPath.Reverse();
+
+		}
+
+		//Debug
+		string newPathIds = "";
+
+		foreach(Node n in newPath)
+        {
+			newPathIds += n.frame_id + " ";
+        }
+
+		
+
+		Debug.Log("New Path: " + newPathIds);
+
+        return newPath;
+    }
+
 	//Mainly for testing reasons
 	public void PrintTree()
     {
@@ -253,6 +573,10 @@ class BinaryTree
 		}
 		else
 		{
+            if (n.isStatic) // just get the one frame stored there
+            {
+				return stampedDict[0];
+            }
 			if (time == 0) //Return latest stamped transform
 			{
 				int i = stampedDict.Count;
@@ -317,6 +641,8 @@ class BinaryTree
 			Debug.Log("Parent or Child not found");
 			return null;
         }
+
+
 
         if (parentNode.children.ContainsKey(child_id)) //No gap between frames
         {
@@ -445,7 +771,7 @@ class BinaryTree
             {
 				sNodes.Push(qNodes.Dequeue());
             }
-			Debug.Log(sNodes.Count);
+			//Debug.Log(sNodes.Count);
 			//Make a new transform
 			TransformStamped ts = new TransformStamped();
 			ts.header = new Messages.std_msgs.Header();
@@ -513,19 +839,50 @@ class BinaryTree
 			ts.transform = newTransform;
 
 			return ts;
-		}
+        }
     }
 
-	private Messages.geometry_msgs.Transform AddTwoTransforms(Messages.geometry_msgs.Transform a, Messages.geometry_msgs.Transform b)
+    private Messages.geometry_msgs.Transform AddTwoTransforms(Messages.geometry_msgs.Transform a, Messages.geometry_msgs.Transform b)
     {
+        Messages.geometry_msgs.Transform c = new Messages.geometry_msgs.Transform();
+        c.translation = new Messages.geometry_msgs.Vector3();
+        c.translation.x = a.translation.x + b.translation.x;
+        c.translation.y = a.translation.y + b.translation.y;
+        c.translation.z = a.translation.z + b.translation.z;
+
+        UnityEngine.Quaternion aQ = new UnityEngine.Quaternion();
+        UnityEngine.Quaternion bQ = new UnityEngine.Quaternion();
+        aQ.x = (float)a.rotation.x;
+        aQ.y = (float)a.rotation.y;
+        aQ.z = (float)a.rotation.z;
+        aQ.w = (float)a.rotation.w;
+
+        bQ.x = (float)b.rotation.x;
+        bQ.y = (float)b.rotation.y;
+        bQ.z = (float)b.rotation.z;
+        bQ.w = (float)b.rotation.w;
+
+        UnityEngine.Quaternion cQ = bQ * aQ;
+
+        c.rotation = new Messages.geometry_msgs.Quaternion();
+
+        c.rotation.x = cQ.x;
+        c.rotation.y = cQ.y;
+        c.rotation.z = cQ.z;
+        c.rotation.w = cQ.w;
+        return c;
+    }
+
+	private Messages.geometry_msgs.Transform AddTwoTransformsSiblings(Messages.geometry_msgs.Transform a, Messages.geometry_msgs.Transform b)
+	{
 		Messages.geometry_msgs.Transform c = new Messages.geometry_msgs.Transform();
 		c.translation = new Messages.geometry_msgs.Vector3();
-		c.translation.x = a.translation.x + b.translation.x;
-		c.translation.y = a.translation.y + b.translation.y;
-		c.translation.z = a.translation.z + b.translation.z;
+		c.translation.x = b.translation.x - a.translation.x;
+		c.translation.y = b.translation.y - a.translation.y;
+		c.translation.z = b.translation.z - a.translation.z;
 
 		UnityEngine.Quaternion aQ = new UnityEngine.Quaternion();
-		UnityEngine.Quaternion bQ= new UnityEngine.Quaternion();
+		UnityEngine.Quaternion bQ = new UnityEngine.Quaternion();
 		aQ.x = (float)a.rotation.x;
 		aQ.y = (float)a.rotation.y;
 		aQ.z = (float)a.rotation.z;
@@ -545,7 +902,7 @@ class BinaryTree
 		c.rotation.z = cQ.z;
 		c.rotation.w = cQ.w;
 		return c;
-    }
+	}
 	private Messages.geometry_msgs.Transform AddTwoTransformsReverse(Messages.geometry_msgs.Transform a, Messages.geometry_msgs.Transform b)
     {
 		Messages.geometry_msgs.Transform c = new Messages.geometry_msgs.Transform();
@@ -613,7 +970,7 @@ class BinaryTree
 		}
 
 	}
-	public void AddTransform(TransformStamped ts)
+	public void AddTransform(TransformStamped ts, bool isStat)
     {
 		double time = (double)ts.header.stamp.data.sec + ((double)ts.header.stamp.data.nsec / SEC_TO_NSEC);
 
@@ -633,7 +990,7 @@ class BinaryTree
             }
             else
             {
-				Node child = new Node(ts.child_frame_id,ts.header.frame_id);
+				Node child = new Node(ts.child_frame_id,ts.header.frame_id,isStat);
 				child.frames.Add(time, ts);
 				this.root.children.Add(ts.child_frame_id, child);
             }
@@ -648,7 +1005,7 @@ class BinaryTree
         {
 			Node parentNode = Find(this.root, ts.header.frame_id);
 
-			Node child = new Node(ts.child_frame_id,ts.header.frame_id);
+			Node child = new Node(ts.child_frame_id,ts.header.frame_id,isStat);
 			child.frames.Add(time, ts);
 			if(parentNode == null)
             {
@@ -661,6 +1018,10 @@ class BinaryTree
         }
         else
         {
+            if (isStat)
+            {
+				nodeWithChildId.frames.Add(0, ts);
+            }
 			if (!nodeWithChildId.frames.ContainsKey(time))
 			{
 				nodeWithChildId.frames.Add(time, ts);
