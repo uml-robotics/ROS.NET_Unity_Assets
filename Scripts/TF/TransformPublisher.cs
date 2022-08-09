@@ -5,7 +5,8 @@ using Ros_CSharp;
 using tf.net;
 
 public class TransformPublisher : MonoBehaviour {
-
+    //Be sure to keep any children of the main link out of a scene tree, but any further children
+    //  must be actual children in the scene tree. Dont rlly know why, just kinda works that way
     public ROSCore rosmaster;
 
     private NodeHandle nh = null;
