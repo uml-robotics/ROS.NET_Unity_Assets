@@ -6,6 +6,7 @@ using Messages.tf;
 using tf.net;
 using Ros_CSharp;
 using System;
+using System.Linq;
 public class TfSaver_V2 : MonoBehaviour
 {
 	/* NOTES
@@ -93,7 +94,7 @@ public class TfSaver_V2 : MonoBehaviour
 				{
 
 					tree.AddTransform(t,true);
-					StartCoroutine(Remove(t));
+					//StartCoroutine(Remove(t));
 				}
 			}
         }
@@ -105,11 +106,11 @@ public class TfSaver_V2 : MonoBehaviour
 		Messages.geometry_msgs.TransformStamped m;
 		if (!getReverse)
 		{
-			m = tree.GetTransform(link, child, nsecs);
+			m = tree.GetTransformV3(link, child, nsecs);
         }
         else
         {
-			m = tree.GetTransformReverse(link, child, nsecs);
+			m = tree.GetTransformV3(link, child, nsecs);
         }
 		if (m != null)
 		{
@@ -125,6 +126,8 @@ public class TfSaver_V2 : MonoBehaviour
 			Messages.tf.tfMessage tfPub = new Messages.tf.tfMessage();
 			tfPub.transforms = new Messages.geometry_msgs.TransformStamped[1];
 			tfPub.transforms[0] = m;
+			string str = m.transform.translation.x + " " + m.transform.translation.y + " " + m.transform.translation.z + " ";
+			//Debug.Log(str);
 			pub.publish(tfPub);
 		}
 	}
@@ -279,31 +282,49 @@ class BinaryTree
 			path_string += n.frame_id + " ";
         }
 
-		Debug.Log(path_string);
 
 		return p;
     }
 
+	private bool checkDirectLine(List<Node> path)
+    {
+		if(path == null)
+        {
+			return false;
+        }
+		for(int i = 0; i < path.Count - 1; i++)
+        {
+			if(path[i].parent_id != path[i + 1].frame_id)
+            {
+				return false;
+            }
+        }
+		return true;
+    }
+
 	public TransformStamped GetTransformV3(string parent_id, string child_id,double time)
     {
+		//Get Path
 		Node childNode = Find(this.root, child_id);
 		Node parentNode = Find(this.root, parent_id);
-
-		
 
 		List<Node> path = GetPathOfTwoNodes(parent_id, child_id);
 		Queue<Node> pathQ = new Queue<Node>();
 
-		foreach(Node n in path)
-        {
-			pathQ.Enqueue(n);
-        }
+		bool isDirectLine = checkDirectLine(path);
 
 		if(path == null)
         {
 			return null;
         }
 
+		foreach(Node n in path)
+        {
+			pathQ.Enqueue(n);
+        }
+
+
+		//Setup new msg
 		TransformStamped newTs = new TransformStamped();
 		newTs.transform = new Messages.geometry_msgs.Transform();
 		newTs.header = new Messages.std_msgs.Header();
@@ -314,59 +335,117 @@ class BinaryTree
 		newTs.header.frame_id = parent_id;
 		newTs.child_frame_id = child_id;
 		newTs.header.stamp.data.sec = (uint)time;
+		
+		string q = "";
+		foreach (Node n in pathQ)
+		{
+			q += n.frame_id + " ";
+		}
+		Debug.Log("Q: " + q);
+		//Debug.Log
 
+		//Reverse q for debug??
+		//Queue<Node> pathQR = new Queue<Node>(pathQ.Reverse());
 
 		Node before = pathQ.Dequeue();
+		
+		
 		TransformStamped e = SearchFramesForTransform(before, time);
-		if(e == null)
+		if (before.frame_id == this.root.frame_id)
+		{
+			e = new TransformStamped();
+			e.transform = new Messages.geometry_msgs.Transform();
+			e.transform.translation = new Messages.geometry_msgs.Vector3();
+			e.transform.rotation = new Messages.geometry_msgs.Quaternion();
+			e.transform.translation.x = 0;
+			e.transform.translation.y = 0;
+			e.transform.translation.z = 0;
+
+			e.transform.rotation.x = 0;
+			e.transform.rotation.y = 0;
+			e.transform.rotation.z = 0;
+			e.transform.rotation.w = 0;
+
+		}
+
+		if (e == null)
         {
 			return null;
         }
+
 		newTs.transform = e.transform;
 
 		if(newTs.transform == null)
         {
 			return null;
         }
-
+		bool directLine = false;
 		//maybe print the q
-
-		while (pathQ.Count > 1)
+		while (pathQ.Count > 0)
         {
-			Debug.Log(pathQ.Count);
-			Node after = pathQ.Dequeue();
+			
 
-			if(before.parent_id == after.frame_id) //if a is parent of b
+			Node after = pathQ.Dequeue();
+			//Debug.Log(before.frame_id);
+			if (before.frame_id == after.parent_id) //if a is parent of b
             {
+				//Debug.Log(before.frame_id + " is a parent of " + after.frame_id);
+				//Debug.Log(newTs.transform.translation.x + " " + newTs.transform.translation.y + " " + newTs.transform.translation.z + " ");
+				
 				TransformStamped a = SearchFramesForTransform(after, time);
+
 				if(a == null)
                 {
 					return null;
                 }
+				//Debug.Log(a.transform.translation.x + " " + a.transform.translation.y + " " + a.transform.translation.z + " ");
 				newTs.transform = AddTwoTransforms(a.transform,newTs.transform);
-            }else if(before.frame_id == after.parent_id)//if b is parent of a
+            }else if(before.parent_id == after.frame_id && isDirectLine)//if b is parent of a
             {
+				//Debug.Log(before.frame_id + " is a child of " + after.frame_id);
+				//Debug.Log(newTs.transform.translation.x + " " + newTs.transform.translation.y + " " + newTs.transform.translation.z + " ");
+				TransformStamped par = SearchFramesForTransform(before, time);
 				TransformStamped a = SearchFramesForTransform(after, time);
-				if (a == null)
+				//Debug.Log(a.transform.translation.x + " " + a.transform.translation.y + " " + a.transform.translation.z + " ");
+				if (a == null || par == null)
 				{
 					return null;
 				}
-				newTs.transform = AddTwoTransformsReverse(a.transform, newTs.transform);
+				newTs.transform = AddTwoTransformsReverse(par.transform, newTs.transform);
             }
-            else //same level
+            else if (isDirectLine == false) //same level
             {
+				//Debug.Log(before.frame_id + " is a sibling of " + after.frame_id);
+				//Debug.Log(newTs.transform.translation.x + " " + newTs.transform.translation.y + " " + newTs.transform.translation.z + " ");
 				TransformStamped a = SearchFramesForTransform(after, time);
+				//Debug.Log(a.transform.translation.x + " " + a.transform.translation.y + " " + a.transform.translation.z + " ");
 				if (a == null)
 				{
 					return null;
 				}
 				newTs.transform = AddTwoTransformsSiblings(a.transform, newTs.transform);
+
             }
+            else if (isDirectLine == true)
+            {
+				//Debug.Log(before.frame_id + " is a parent of " + after.frame_id);
+				//Debug.Log(newTs.transform.translation.x + " " + newTs.transform.translation.y + " " + newTs.transform.translation.z + " ");
+
+				TransformStamped a = SearchFramesForTransform(after, time);
+
+				if (a == null)
+				{
+					return null;
+				}
+				//Debug.Log(a.transform.translation.x + " " + a.transform.translation.y + " " + a.transform.translation.z + " ");
+				newTs.transform = AddTwoTransforms(a.transform, newTs.transform);
+			}
+			//Debug.Log("New:");
+			//Debug.Log(newTs.transform.translation.x + " " + newTs.transform.translation.y + " " + newTs.transform.translation.z + " ");
 
 			before = after;
         }
 
-		Debug.Log("we dont geet here do we?");
 		return newTs;
     }
 
@@ -412,8 +491,6 @@ class BinaryTree
 				break;
 			}
 		}
-
-		Debug.Log(commonAncestorId);
 
         //Direct Line Test
         foreach (Node n in path_a)
@@ -522,7 +599,7 @@ class BinaryTree
 
 		
 
-		Debug.Log("New Path: " + newPathIds);
+		//Debug.Log("New Path: " + newPathIds);
 
         return newPath;
     }
@@ -569,6 +646,25 @@ class BinaryTree
 				Debug.Log(n.frame_id);
 				return stampedDict[0];
             }
+
+			if(n.frame_id == this.root.frame_id)
+            {
+				TransformStamped r = new TransformStamped();
+				r.transform = new Messages.geometry_msgs.Transform();
+				r.transform.translation = new Messages.geometry_msgs.Vector3();
+				r.transform.rotation = new Messages.geometry_msgs.Quaternion();
+
+				r.transform.translation.x = 0;
+				r.transform.translation.y = 0;
+				r.transform.translation.z = 0;
+
+				r.transform.rotation.x = 0;
+				r.transform.rotation.y = 0;
+				r.transform.rotation.z = 0;
+				r.transform.rotation.w = 0;
+				return r;
+            }
+
 			if (time == 0) //Return latest stamped transform
 			{
 				int i = stampedDict.Count;
@@ -869,9 +965,35 @@ class BinaryTree
 	{
 		Messages.geometry_msgs.Transform c = new Messages.geometry_msgs.Transform();
 		c.translation = new Messages.geometry_msgs.Vector3();
-		c.translation.x = b.translation.x - a.translation.x;
-		c.translation.y = b.translation.y - a.translation.y;
-		c.translation.z = b.translation.z - a.translation.z;
+		c.translation.x = (a.translation.x - b.translation.x);
+		c.translation.y = (a.translation.y - b.translation.y);
+		c.translation.z = (a.translation.z -  b.translation.z);
+
+		/*UnityEngine.Vector3 cT = new UnityEngine.Vector3();
+		UnityEngine.Vector3 aT= new UnityEngine.Vector3();
+		UnityEngine.Vector3 bT = new UnityEngine.Vector3();
+
+		aT.x = (float)a.translation.x;
+		aT.y = (float)a.translation.y;
+		aT.z = (float)a.translation.z;
+
+		bT.x = (float)b.translation.x;
+		bT.y = (float)b.translation.y;
+		bT.z = (float)b.translation.z;
+
+		cT = bT - aT;
+		cT.Scale(new UnityEngine.Vector3(-1f,-1f,-1f));*?
+		//cT.x *= -1;
+		//cT.y *= -1;
+		//cT.z *= -1;
+
+		Debug.Log(aT);
+
+		c.translation.x = cT.x;
+		c.translation.y = cT.y;
+		c.translation.z = cT.z;*/
+
+
 
 		UnityEngine.Quaternion aQ = new UnityEngine.Quaternion();
 		UnityEngine.Quaternion bQ = new UnityEngine.Quaternion();
@@ -899,13 +1021,17 @@ class BinaryTree
     {
 		Messages.geometry_msgs.Transform c = new Messages.geometry_msgs.Transform();
 		c.translation = new Messages.geometry_msgs.Vector3();
-		Debug.Log("a " + (a.translation == null).ToString());
-		Debug.Log("b " + (b.translation == null).ToString());
-		Debug.Log("c " + (c.translation == null).ToString());
+		//Debug.Log("a " + (a.translation == null).ToString());
+		//Debug.Log("b " + (b.translation == null).ToString());
+		//Debug.Log("c " + (c.translation == null).ToString());
 
-		c.translation.x = (a.translation.x + b.translation.x) * -1;
-		c.translation.y = (a.translation.y + b.translation.y) * -1;
-		c.translation.z = (a.translation.z + b.translation.z) * -1;
+		c.translation.x = a.translation.x + b.translation.x *-1;
+		c.translation.y = a.translation.y + b.translation.y * -1;
+		c.translation.z = a.translation.z + b.translation.z * -1;
+
+		c.translation.x = -a.translation.x;
+		c.translation.y = -a.translation.y;
+		c.translation.z = -a.translation.z;
 
 		UnityEngine.Quaternion aQ = new UnityEngine.Quaternion();
 		UnityEngine.Quaternion bQ= new UnityEngine.Quaternion();

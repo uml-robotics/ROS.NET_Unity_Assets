@@ -12,6 +12,8 @@ public class TransformPublisher : MonoBehaviour {
     private Publisher<Messages.tf.tfMessage> tfPub;
 
     public GameObject trackedObject;
+    public GameObject dummyObject;
+
 
     public string frame_id;
     public string child_frame_id;
@@ -32,9 +34,24 @@ public class TransformPublisher : MonoBehaviour {
         Messages.geometry_msgs.TransformStamped[] arr = new Messages.geometry_msgs.TransformStamped[1];
         arr[0] = new Messages.geometry_msgs.TransformStamped();
 
+       
         tfmsg.transforms = arr;
         Transform trans = trackedObject.transform;
-        emTransform ta = new emTransform(trans, ROS.GetTime(), frame_id, child_frame_id);
+        Transform dummyTrans = dummyObject.transform;
+        
+        dummyTrans.transform.position = trans.transform.localPosition;
+        dummyTrans.transform.rotation = trans.transform.rotation;
+        emTransform ta;
+        if (child_frame_id != "/base_link")
+        {
+
+            //Debug.Log(trans.localPosition.ToString());
+            //Debug.Log(dummyTrans.localRotation.ToString());
+            ta = new emTransform(dummyTrans, ROS.GetTime(), frame_id, child_frame_id);
+        }
+        else { ta = new emTransform(trans, ROS.GetTime(), frame_id, child_frame_id); }
+
+        
 
         Messages.std_msgs.Header hdr = new Messages.std_msgs.Header();
         hdr.frame_id = frame_id;
@@ -50,6 +67,7 @@ public class TransformPublisher : MonoBehaviour {
         //tfmsg.transforms[0].transform.translation.z += 1.0;
         tfmsg.transforms[0].transform.rotation = ta.basis.ToMsg();
         tfmsg.Serialized = null;
+
 
         tfPub.publish(tfmsg);
     }
