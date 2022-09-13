@@ -85,7 +85,10 @@ public class TfVisualizer : MonoBehaviour
 
     private bool IsVisible(string child_frame_id)
     {
-        //TODO rviz style checkboxes?
+        if (tree.ContainsKey(child_frame_id))
+        {
+            return tree[child_frame_id].GetComponent<TfIsVisible>().isVisible;
+        }
         return true;
     }
 
@@ -180,6 +183,10 @@ public class TfVisualizer : MonoBehaviour
                     tree[tf.child_frame_id].localRotation = rot;
                     tree[tf.child_frame_id].GetChild(0).localScale = new Vector3(axis_scale, axis_scale, axis_scale);
                 }
+            }
+            else
+            {
+                tree[tf.child_frame_id].gameObject.SetActive(false);
             }
         }
 
