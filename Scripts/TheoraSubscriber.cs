@@ -769,7 +769,7 @@ public class TheoraSubscriber : MonoBehaviour
         //Apply texture
         if (dataMutex.WaitOne(0))
         {
-            texture.Resize(width, height);
+            texture.Reinitialize(width, height);
             texture.LoadRawTextureData(bgr);
             texture.Apply();
             textureMutex.Set();
