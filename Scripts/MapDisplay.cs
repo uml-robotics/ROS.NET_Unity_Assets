@@ -31,6 +31,8 @@ public class MapDisplay : ROSMonoBehavior
 
     private AutoResetEvent textureMutex = new AutoResetEvent(false);
 
+    private MeshRenderer mapRenderer;
+
 	// Use this for initialization
     private void Start()
     {
@@ -39,6 +41,11 @@ public class MapDisplay : ROSMonoBehavior
             mapsub = nh.subscribe<OccupancyGrid>(map_topic, 1, mapcb);
             metadatasub = nh.subscribe<MapMetaData>(map_metadata_topic, 1, metadatacb);
         });
+
+        MeshFilter mapMesh = gameObject.AddComponent<MeshFilter>();
+        mapRenderer = GetComponent<MeshRenderer>();
+        if (mapRenderer == null)
+            mapRenderer = gameObject.AddComponent<MeshRenderer>();
     }
     private void SetDimensions(uint w, uint h, float res, Messages.geometry_msgs.Point position, Messages.geometry_msgs.Quaternion orientation)
     {
@@ -73,7 +80,7 @@ public class MapDisplay : ROSMonoBehavior
 	        if (mapTexture == null || mapTexture.width != pwidth || mapTexture.height != pheight)
 	        {
 	            mapTexture = new Texture2D((int) pwidth, (int) pheight, TextureFormat.ARGB32, false, true);
-                GetComponent<MeshRenderer>().material.mainTexture = mapTexture;
+                mapRenderer.material.mainTexture = mapTexture;
                 mapTexture.LoadRawTextureData(imageData);
 	        }
 	        mapTexture.Apply();

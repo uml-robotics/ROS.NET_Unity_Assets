@@ -33,7 +33,7 @@ public class LabelCorrector : MonoBehaviour
     // Update is called once per frame
     void Update ()
     {
-        gameObject.GetComponentInChildren<MeshRenderer>(true).enabled = visstate;
+        gameObject.GetComponentInChildren<MeshRenderer>(true).enabled = visstate; //this should be optimized
         if(Camera.main != null)
         {
             transform.LookAt(Camera.main.transform, Camera.main.transform.up);

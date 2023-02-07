@@ -32,7 +32,7 @@ public class CompressedImageDisplay : MonoBehaviour
     private NodeHandle nh = null;
     private Subscriber<CompressedImage> mapsub;
     
-    private uint pwidth=2, pheight=2;
+    //private uint pwidth=2, pheight=2;
 
     private MeshRenderer rend = null;
 
